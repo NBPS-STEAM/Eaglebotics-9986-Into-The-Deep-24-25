@@ -1,3 +1,258 @@
+# SUPRA
+
+Welcome to SUPRA!
+
+Please read through this file, at least down to the "FTC Robot Controller Readme" section.
+
+If you want to use SUPRA for your team, you should make a fork of this repository on GitHub,
+then clone or download *the fork* to your computer. If you plan to make changes for your own team,
+please don't clone or try to modify this original repository. This is the public one for everyone.
+
+From Eaglebotics (FTC teams 9986, 9987, 24000), with love
+
+Written by Kelin Levine
+
+## A (Very Brief) Intro to Java
+
+## Command-Based Programming
+
+## Commenting
+
+Comments are
+
+Comments as much for organization as they are for explaining things. If you organize your code
+well, then you won't have to comment much at all. The important part is being able to retrace
+your logic in case something breaks or you need to make a change.
+
+Use `//` in a line of code to turn the rest of the line into a comment.
+
+Use `/*` to start a block comment, then `*/` to end the block comment. All text between the start
+and end of the block comment will become a comment. Block comments may span multiple lines, or
+contain only a specific portion of a line.
+
+Use comments to remove unused code
+
+Try to keep comments within the IDE line
+
+## Best Practices
+
+One thing, one purpose. Every method and class should have exactly one specific purpose (except
+for the main loop). If one thing does multiple things, break it into multiple parts. It keeps code
+self-contained and makes it easier to reuse, trace, and debug code.
+
+The less you have to remember for something to work, the better. Either write it down or make it
+obvious. The fewer unwritten rules there are, the less likely you are to make a mistake.
+This is especially true if there are multiple programmers on your team.
+
+Don't always take the shortest possible path to a solution. Think about the big picture and how
+certain functions could be reused. You're laying a foundation here; if you cut corners to save
+time now, you'll only lose that time later working around an incomplete solution.
+
+Write good names. A variable named `reeklipSchmoob92` is funny, but confusing. A method named
+`thisOneWorks()` will similarly make you want to install a new hole in some wall a few weeks later.
+I'm looking at you, Owen.
+
+Comment complex or vital parts of code. Don't comment everything, but you need to be able to
+retrace your logic at a glance. If you can't easily tell what's going on, then what are you going
+to do if it breaks? What if you make a change later that breaks it and you don't realize because
+you don't remember the requirements to it working?
+
+## Good Control Schemes
+
+"Good control schemes are the ones where you press a button and it moves to where you want it."
+-- Owen Friedman
+
+Position control is important. That is, the motors being able to control what
+position they're at and move to an exact position at the push of a button. Manually controlling
+every motor is painfully slow and imprecise. Remember that from the side of the playing field, you
+can't always see all parts of the robot.
+
+The more functionality you can pack into a single button, the better. Perhaps instead of just
+moving the arm to a position, pressing a button also rotates the wrist down? In the heat of the
+moment mid-match, it's hard to remember to press multiple buttons at once. Just make sure your
+controls don't prevent the robot from being able to do something it may need to do in a match.
+
+If you have two drivers, try to avoid having both drivers control the same thing. It should be
+very clear the duties of each driver;
+i.e. have one driver control *only* the base (wheels), the other *only* controls the arm.
+If both drivers can do the same thing, or one driver is doing too many things, then you might
+waste precious moments in a match figuring out who does what next.
+
+It's good to not have to remember things or read instructions mid-match. If you can make patterns
+in how buttons are laid out, it will be easier to avoid pressing the wrong button.
+
+If it suits the game, you can use a state machine FINISH LATER
+
+If you use position control, you should also have a way to bypass it to control the motors manually
+and reset them in case of emergency. You probably won't need it, but it would be real embarrassing
+if some random technical fault caused a motor to start in the wrong spot and reduce your robot
+to a pushbot just because you couldn't move it back down*.
+
+There's endless ways to do the control scheme of your robot, but at the end of the day, it depends
+on the game and the drivers. What's important is that it's both effective and intuitive.
+If the drivers can play a match without looking down at the controller, that's a good sign.
+
+*This happened to team 9987 in finals game 3 of the South Florida Regional (2023-2024).
+It was a sad walk back to the pits.
+
+## Git and GitHub
+
+Let's straighten out a common misconception: Git and GitHub are not the same thing.
+Git is the software, GitHub is the online service, and the two were created separately.
+
+Git is what's called version control software. It tracks your code as changes are made so that
+you can track changes over time and revert back to a previous working version if something goes
+wrong, or if you need to look at some old code that's since been deleted.
+
+Git works by turning your code project into a "repository" (or "repo" for short). In a Git
+repository, changes are not tracked continuously, but in steps called "commits".
+*Not automatically* but when you tell it to, one or more files are added to be tracked in the
+*next* commit. Then, *also not automatically* but when you tell it to, a commit is made, and all
+changes made to all *tracked* files since the last commit are saved in the new commit.
+At any time, if you need, you can "revert" your code back to how it was in a previous commit.
+Be careful, because this will *erase* all changes not in the last commit.
+
+You can do these actions all from within Android Studio using the "Commit" and "Git" panels from
+the buttons on the left side of the window. If you're courageous, then you can also try using Git's
+command-line interface, but I strongly advise against this because its commands are confusing and
+make it extremely easy to ruin everything.
+
+When you make a commit, you will be asked to write a message describing the changes you made.
+Do this! Write a brief but descriptive comment on what was changed in that commit. When you look
+through your past commits, all you have to go off of are the messages describing each commit.
+If you don't write good messages, then finding a specific change... could take a while.
+
+Something like "fixed stuff" is not a good commit message. You'll have no clue what it means 2
+weeks later.
+See https://www.freecodecamp.org/news/how-to-write-better-git-commit-messages/ for some good
+practices, or just google for help.
+
+Add files and make commits when:
+- You finish a new feature that works
+- You finish a big change that works
+- You're about to start a big change and the current code (mostly) works
+- You finish fixes that you wouldn't want to redo if you have to revert
+- It's been a while since your last commit
+
+DO NOT make commits when:
+- You finish a change that does not work
+- You finish a change that "probably" works but isn't tested (lest you have your own mini CrowdStrike disaster)
+- You are in the middle of implementing a big change and the code currently doesn't work or is confusing
+- You've only made a very small change (too many commits makes it hard to find which one to look back to)
+- You still have temporary variable or method names in the code (try to avoid changing existing variable/method names between commits)
+- You have anything that leaves the code in a confusing, unworkable, or temporary state
+
+Even if you work alone, you should still use Git. Being able to see or fall back on old code in a
+pinch could save your life, and Git's time travel abilities make that possible without keeping
+around loads of old, obsolete code. However, if your team has multiple programmers, then Git with
+GitHub can also help keep your code synchronized between all of you, though the rules are a little
+more complex.
+
+GitHub is an online service that stores your Git repositories in an online system. You can then
+work on a "local" copy of your "remote" online repository and when you make commits, you can
+"push" them to the remote repository for your other teammates to "pull" to download and apply the
+changes when they get the chance.
+
+There's a couple new things that can go wrong when using Git online. First is that *it's nearly
+impossible to safely change (amend) or delete a commit once it's pushed*. You must make a new
+commit. You can cancel or amend your last commit if you forget something *before* pushing,
+but not after.
+
+Second is something called a "merge conflict". FINISH LATER
+
+Try to avoid the following things when working with other people:
+- Working on a file that someone else is also working on (causes merge conflicts)
+- Forgetting to make/push commits for an extended period of time (causes confusion and merge conflicts)
+- Writing unclear variable or method names
+- Changing public variable or method names which are already in use
+- Spontaneously reworking public variables or methods which are already in use
+- Spontaneously working on new features without checking if someone else is on it
+- Leaving large chunks of important or complex code unexplained (use comments, even if just a few)
+- Randomly changing the grammar of someone else's code
+- Insisting on a different style of formatting your code from everyone else (being consistent is better than being good)
+- Trying to undo or amend commits that have already been pushed
+- Randomly deleting files that other people may be using (yes, this happens)
+This is not an exhaustive list by any means.
+
+Effective use of Git with GitHub can make for graceful collaboration between all programmers,
+resulting in better code and much faster progress for a fully prepared robot. Adversely, poor
+use of Git with GitHub will be a total disaster for everyone involved that takes far more time
+than actually writing the code. Please, pretty please, be mindful of your changes and commits.
+Follow the suggestions outlined above. Don't work on files that other team members are using.
+Don't start on new features without telling anyone, and definitely don't make changes to existing
+features without telling anyone.
+
+## Libraries and Gradle
+
+You don't write all of the code behind your project. You can use other projects, such as FTCLib
+or Road Runner, in your project to get access to new features. This kind of reusable pre-packaged
+code is called a library, and they can be imported into code files for access to new classes.
+Some libraries come built-in to FTC robot code or SUPRA, but some need to be installed manually.
+In some places, libraries are called packages. Libraries and packages usually mean the same thing.
+
+SUPRA comes preconfigured with FTCLib and Road Runner (last updated Aug 29 2024).
+
+Features from installed libraries will appear in your autocomplete suggestions and will be
+automatically imported if used. If you want to use a new library that isn't installed, then you
+will need to install it first using Gradle.
+
+Gradle is what's called a build system. It handles downloading libraries and compiling your code
+into apps so that you don't have to. If you need a new library, you should follow the instructions
+provided by the library's GitHub page or website. It will probably involve adding or changing some
+Gradle settings.
+
+To change Gradle settings, first, follow the instructions given by your library to make the
+appropriate edits to the settings files. They're in the Gradle Scripts dropdown in the hierarchy
+on the left. The only confusing part is picking the right "build.gradle" files. There are three:
+one for the project as a whole, one for "Module :FtcRobotController" (the built-in FTC code and
+examples), and one for "Module :TeamCode" (your robot code). Each file is identified by the grey
+text next to the "build.gradle" name. Installing a library will usually involve modifying the
+files for the "Project" and/or "TeamCode" files, but not "FtcRobotController".
+
+Finally, to apply your changes, perform a Gradle sync. You can do this either with the button at
+the top right of the window, or by clicking "Sync now" on the blue banner that appears when you
+make a change to Gradle settings. A Gradle sync is when Gradle reads all of the settings and
+"synchronizes" your project with the settings: downloading and installing new libraries, removing
+old libraries, and making sure that everything is in order. If you made a mistake in your changes,
+the error will usually* pop up during the sync.
+*If you forget to sync, none of your changes will apply.*
+
+*Emphasis on the "usually". Make sure to put the right stuff in the right place. Gradle errors
+often present themselves immediately, but could also appear to work at first and cause issues
+later down the line.
+
+If part of a library/package is mysteriously missing, check that it was installed correctly or
+try syncing again.
+
+Side note: Gradle settings are part of the project, but libraries are downloaded to each computer
+separately. Anytime the project is opened on a new device, you have to sync and download everything
+again on that device. If one person makes a change to the settings, everyone has to sync again.
+Syncing requires internet if (and only if) a new library is added.
+
+## Updating
+
+**Installed libraries, including core FTC libraries, do not update automatically. At the start of
+each season, or if you notice an out-of-date library, you must update manually.**
+
+To update core FTC libraries, you can usually just go into 'build.dependencies.gradle' and
+change the numbers. If you want, you can also go to the GitHub repository and download the new
+FtcRobotController sample code files.
+
+To update most libraries, just replace the stuff from the old installation with the stuff in the
+current instructions for an installation. This might be as simple as changing a number, or it
+could require tearing down and rebuilding chunks of your Gradle settings. Good luck.
+
+If your Gradle settings ever get super borked, you can always wipe them clean by copying the
+Gradle settings from the original FtcRobotController GitHub repository, then reinstalling all the
+libraries. This is tedious, but sometimes it's the only option. Alternatively, if the update
+isn't worth it, you can use Git to revert the Gradle settings back to the last working version.
+
+Again, the FtcRobotController GitHub is: https://github.com/FIRST-Tech-Challenge/FtcRobotController
+
+# FTC Robot Controller Readme
+
+The rest of this file from this point onward is copied from the official FTC TeamCode readme.
+
 ## TeamCode Module
 
 Welcome!

@@ -1,0 +1,12 @@
+If you're interested in using Road Runner, see the instructions in AutonomousRoutine instead.
+
+This roadrunner folder contains files needed for Road Runner to work. It's not a part of SUPRA and
+you don't need to look at or modify (seriously, don't modify) any of the code here to use Road
+Runner. In fact, if you do touch any of these files, it will probably break things. If you need to
+fix these files, either revert the changes with Git or just redownload the files from the Road
+Runner website.
+
+You may need to modify one or more of these files to set hardware names. If you replace these files
+with the originals, make sure to update the hardware names. Also, if necessary, add ".roadrunner" to
+the 'package' line at the top of each file (you can also put the files in the teamcode folder and
+then drag the files into the roadrunner folder to have Android Studio "refactor" it automatically).
