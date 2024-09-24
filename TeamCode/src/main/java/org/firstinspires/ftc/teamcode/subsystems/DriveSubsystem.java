@@ -4,6 +4,7 @@ import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -75,10 +76,10 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Methods
     public void drive(GamepadEx gamepad) {
-        double axial = -gamepad.getLeftY();
-        double lateral = gamepad.getLeftX();
-        double yaw = gamepad.getRightX();
-        drive(axial, lateral, yaw);
+        drive(gamepad.getLeftY(), gamepad.getLeftX(), gamepad.getRightX());
+    }
+    public void drive(Gamepad gamepad) {
+        drive(-gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x);
     }
     public void drive(double axial, double lateral, double yaw) {
         double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);

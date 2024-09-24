@@ -2,23 +2,104 @@
 
 Welcome to SUPRA!
 
-Please read through this file, at least down to the "FTC Robot Controller Readme" section.
-
-If you want to use SUPRA for your team, you should make a fork of this repository on GitHub,
-then clone or download *the fork* to your computer. If you plan to make changes for your own team,
-please don't clone or try to modify this original repository. This is the public one for everyone.
+It's not necessary to read this whole file. To get started, at least read from here through to
+the section on "Command-Based Programming". You may read beyond that for more information.
+Past the "FTC Robot Controller Readme" header is the contents of the official FTC readme text.
 
 From Eaglebotics (FTC teams 9986, 9987, 24000), with love
 
 Written by Kelin Levine
 
+## Get Started
+
+The first step to writing robot code all by yourself is to [install Android Studio](https://developer.android.com/studio).
+Continue after you've done that and have this file open in the editor.
+
+If you want to use SUPRA for your team, you should make a fork of this repository on GitHub,
+then use Git to clone *the fork* to your computer. If you plan to make changes for your own team,
+please don't clone or try to modify the original repository. It's the public one for everyone.
+
+## Anatomy of FTC Robot Code
+
+Robot code is written in a routine called an "operation mode", or opmode for short. An opmode
+takes the form of a java file which contains code that is run when the opmode starts.
+
+To run a robot, you select an opmode and run it.
+A robot may have any number of opmodes installed, but can only run one at a time.
+There are two types of opmodes:
+
+* Tele-Operation (Teleop)
+  * Robot may use controller inputs
+  * Makes up the main portion of the match
+* Autonomous
+  * Robot may NOT use controller inputs
+  * Makes up the first 30 seconds of the match
+
+The robot works in two wirelessly connected parts: the Control Hub and the Driver Station.
+
+* Control Hub: sits on the robot and runs code using attached motors and sensors.
+  * A single Expansion Hub may be connected to the Control Hub to add more ports for motors and sensors.
+* Driver Station: sits outside the playing field with the drivers
+  * Communicates controller inputs
+  * Signals the Control Hub to start or stop opmodes
+
+For communication, the robot creates a wireless network when it turns on. You can connect using WiFi.
+If connected from a driver station, you may configure the robot or run opmodes.
+If connected from a computer, you may configure the robot or deploy new code.
+
+When you deploy code, it installs as a single app containing all opmodes.
+Deploying again will completely replace the previously installed app.
+There is no undoing an install!
+
+## Tele-Op Opmodes
+
+Teleop routines typically have the driver(s) control the robot using remote controls. It's used
+during the main portion of a match (the so-called teleoperated period).
+
+It's recommended to program your teleop routines using command-based programming (see below).
+
+## Autonomous Opmodes
+
+FINISH LATER
+
+Make sure to check the competition manual for measurements!
+
 ## A (Very Brief) Intro to Java
+
+FINISH LATER
 
 ## Command-Based Programming
 
+Command-based programming is a style of programming where you write code by configuring (binding)
+actions (commands) to be performed when certain conditions are met (triggers).
+
+i.e. When the B button on a controller (trigger) is pressed (binding), move the arm to high position (action).
+
+To set up command-based programming, you should organize each section of the robot (i.e. drivetrain,
+arm, etc.) into its own class file which extends 'SubsystemBase'. These are called subsystems.
+
+When you bind a command, you have the option of assigning it a subsystem to occupy. If that command
+should be run but another command is already running on that subsystem, then it will automatically
+either prevent (block) itself from running or stop (interrupt) the other command.
+
+You may also bind a default command. Default commands are called to run continuously while no other
+commands are running on its subsystem. Default commands must be assigned a subsystem.
+
+Command-based programming is not included in the basic FTC resources, but is provided by a
+community project called FTCLib. SUPRA comes preinstalled with FTCLib. See sections below for more
+details on installing/updating it.
+
+For help and documentation on command-based programming and the other features offered by FTCLib,
+see [the official FTCLib documentation](https://docs.ftclib.org/ftclib).
+
+### Take a break!
+
+From this point on, the rest of this file is more details. You should read through it, but if
+you just want to jump into code, you're ready to start learning by yourself.
+
 ## Commenting
 
-Comments are
+Comments are FINISH LATER
 
 Comments as much for organization as they are for explaining things. If you organize your code
 well, then you won't have to comment much at all. The important part is being able to retrace
@@ -28,7 +109,7 @@ Use `//` in a line of code to turn the rest of the line into a comment.
 
 Use `/*` to start a block comment, then `*/` to end the block comment. All text between the start
 and end of the block comment will become a comment. Block comments may span multiple lines, or
-contain only a specific portion of a line.
+contain only a specific part of a line.
 
 Use comments to remove unused code
 
@@ -128,19 +209,21 @@ See https://www.freecodecamp.org/news/how-to-write-better-git-commit-messages/ f
 practices, or just google for help.
 
 Add files and make commits when:
-- You finish a new feature that works
-- You finish a big change that works
-- You're about to start a big change and the current code (mostly) works
-- You finish fixes that you wouldn't want to redo if you have to revert
-- It's been a while since your last commit
+
+* You finish a new feature that works
+* You finish a big change that works
+* You're about to start a big change and the current code (mostly) works
+* You finish fixes that you wouldn't want to redo if you have to revert
+* It's been a while since your last commit
 
 DO NOT make commits when:
-- You finish a change that does not work
-- You finish a change that "probably" works but isn't tested (lest you have your own mini CrowdStrike disaster)
-- You are in the middle of implementing a big change and the code currently doesn't work or is confusing
-- You've only made a very small change (too many commits makes it hard to find which one to look back to)
-- You still have temporary variable or method names in the code (try to avoid changing existing variable/method names between commits)
-- You have anything that leaves the code in a confusing, unworkable, or temporary state
+
+* You finish a change that does not work
+* You finish a change that "probably" works but isn't tested (lest you have your own mini CrowdStrike disaster)
+* You are in the middle of implementing a big change and the code currently doesn't work or is confusing
+* You've only made a very small change (too many commits makes it hard to find which one to look back to)
+* You still have temporary variable or method names in the code (try to avoid changing existing variable/method names between commits)
+* You have anything that leaves the code in a confusing, unworkable, or temporary state
 
 Even if you work alone, you should still use Git. Being able to see or fall back on old code in a
 pinch could save your life, and Git's time travel abilities make that possible without keeping
@@ -161,17 +244,18 @@ but not after.
 Second is something called a "merge conflict". FINISH LATER
 
 Try to avoid the following things when working with other people:
-- Working on a file that someone else is also working on (causes merge conflicts)
-- Forgetting to make/push commits for an extended period of time (causes confusion and merge conflicts)
-- Writing unclear variable or method names
-- Changing public variable or method names which are already in use
-- Spontaneously reworking public variables or methods which are already in use
-- Spontaneously working on new features without checking if someone else is on it
-- Leaving large chunks of important or complex code unexplained (use comments, even if just a few)
-- Randomly changing the grammar of someone else's code
-- Insisting on a different style of formatting your code from everyone else (being consistent is better than being good)
-- Trying to undo or amend commits that have already been pushed
-- Randomly deleting files that other people may be using (yes, this happens)
+* Working on a file that someone else is also working on (causes merge conflicts)
+* Forgetting to make/push commits for an extended period of time (causes confusion and merge conflicts)
+* Writing unclear variable or method names
+* Changing public variable or method names which are already in use
+* Spontaneously reworking public variables or methods which are already in use
+* Spontaneously working on new features without checking if someone else is on it
+* Leaving large chunks of important or complex code unexplained (use comments, even if just a few)
+* Randomly changing the grammar of someone else's code
+* Insisting on a different style of formatting your code from everyone else (being consistent is better than being good)
+* Trying to undo or amend commits that have already been pushed
+* Randomly deleting files that other people may be using (yes, this happens)
+
 This is not an exhaustive list by any means.
 
 Effective use of Git with GitHub can make for graceful collaboration between all programmers,

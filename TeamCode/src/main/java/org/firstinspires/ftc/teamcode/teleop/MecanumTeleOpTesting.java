@@ -38,7 +38,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
-import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystemAdvanced;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 
 /*
@@ -75,12 +75,12 @@ import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
  * Right stick          |   Drive robot (rotate)
  * D-pad up             |   Move wrist up
  * D-pad down           |   Move wrist down
- * D-pad left           |   Move left claw closed
- * D-pad right          |   Move right claw closed
+ * D-pad left           |   Move claw closed
+ * D-pad right          |   Move claw closed
  * North (Y/Δ) button   |   Rotate arm up
  * South (A/X) button   |   Rotate arm down
- * West (X/□) button    |   Move left claw open
- * East (B/○) button    |   Move right claw open
+ * West (X/□) button    |   Move claw open
+ * East (B/○) button    |   Move claw open
  * Right bumper         |   Extend stendo
  * Left bumper          |   Retract stendo
  * Right trigger down   |   Increase power for selected motor (decided by control mode)
@@ -145,8 +145,7 @@ public class MecanumTeleOpTesting extends LinearOpMode {
         DcMotor frontRightDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_FR);
         DcMotor backRightDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BR);
 
-        Servo leftClawServo = hardwareMap.get(Servo.class, Constants.NAME_CLAW_L);
-        Servo rightClawServo = hardwareMap.get(Servo.class, Constants.NAME_CLAW_R);
+        Servo clawServo = hardwareMap.get(Servo.class, Constants.NAME_CLAW);
 
         DcMotor armLiftMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
         DcMotor armTravelMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_EXTEND_M);
@@ -175,8 +174,7 @@ public class MecanumTeleOpTesting extends LinearOpMode {
 
         DriveSubsystem driveSubsystem = new DriveSubsystem(hardwareMap, Constants.DRIVE_POWER_MULTIPLIER);
 
-        leftClawServo.setDirection(Servo.Direction.REVERSE);
-        rightClawServo.setDirection(Servo.Direction.FORWARD);
+        clawServo.setDirection(Servo.Direction.FORWARD);
 
         armWristServo.setDirection(Servo.Direction.REVERSE);
 
@@ -188,7 +186,7 @@ public class MecanumTeleOpTesting extends LinearOpMode {
         armLiftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         armLiftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        ArmSubsystem armSubsystem = new ArmSubsystem(hardwareMap);
+        ArmSubsystemAdvanced armSubsystem = new ArmSubsystemAdvanced(hardwareMap);
         armSubsystem.applyWristPosition(1.0);
 
         // Wait for the game to start (driver presses PLAY)
@@ -287,14 +285,14 @@ public class MecanumTeleOpTesting extends LinearOpMode {
                 }
                 // Claws
                 if (gamepad1.dpad_left) {
-                    leftClawServo.setPosition(leftClawServo.getPosition() + 0.005);
+                    clawServo.setPosition(clawServo.getPosition() + 0.005);
                 } else if (gamepad1.x) {
-                    leftClawServo.setPosition(leftClawServo.getPosition() - 0.005);
+                    clawServo.setPosition(clawServo.getPosition() - 0.005);
                 }
                 if (gamepad1.dpad_right) {
-                    rightClawServo.setPosition(rightClawServo.getPosition() + 0.005);
+                    clawServo.setPosition(clawServo.getPosition() + 0.005);
                 } else if (gamepad1.b) {
-                    rightClawServo.setPosition(rightClawServo.getPosition() - 0.005);
+                    clawServo.setPosition(clawServo.getPosition() - 0.005);
                 }
             }
 
@@ -370,8 +368,7 @@ public class MecanumTeleOpTesting extends LinearOpMode {
             telemetry.addData("Control mode:", controlMode);
             telemetry.addData("Limp motors?", isLimp);
             telemetry.addData("", "");
-            telemetry.addData("Left  claw servo position:", leftClawServo.getPosition());
-            telemetry.addData("Right claw servo position:", rightClawServo.getPosition());
+            telemetry.addData("Claw servo position:", clawServo.getPosition());
             telemetry.addData("", "");
             telemetry.addData("Wrist scaled position:", Calculations.encoderToScaleArmWrist(armWristServo.getPosition()));
             telemetry.addData("Wrist servo position:", armWristServo.getPosition());

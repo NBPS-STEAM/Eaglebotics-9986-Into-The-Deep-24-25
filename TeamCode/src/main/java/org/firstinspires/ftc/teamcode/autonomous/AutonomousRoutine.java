@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.SidePosition;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
-import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystemAdvanced;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
@@ -98,7 +98,7 @@ public class AutonomousRoutine extends LinearOpMode {
     // Hardware objects
     private OpenCvCamera frontCamera;
     private MecanumDrive mDrive;
-    private ArmSubsystem armSubsystem;
+    private ArmSubsystemAdvanced armSubsystem;
 
 
     // Method to initialize the robot
@@ -136,9 +136,8 @@ public class AutonomousRoutine extends LinearOpMode {
         mDrive = new MecanumDrive(hardwareMap, new Pose2d(new Vector2d(0, 0), 0.0));
 
         // Arm assembly
-        armSubsystem = new ArmSubsystem(hardwareMap);
-        armSubsystem.closeLeftClaw();
-        armSubsystem.closeRightClaw();
+        armSubsystem = new ArmSubsystemAdvanced(hardwareMap);
+        armSubsystem.closeClaw();
         armSubsystem.applyPosition(compactPosition);
         armSubsystem.applyWristPosition(1);
 

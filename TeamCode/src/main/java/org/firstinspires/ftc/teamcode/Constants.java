@@ -27,8 +27,7 @@ public class Constants {
     public static final String  NAME_DRIVE_BL = "drive_back_left";
     public static final String  NAME_DRIVE_BR = "drive_back_right";
 
-    public static final String  NAME_CLAW_L = "left_claw_servo";
-    public static final String  NAME_CLAW_R = "right_claw_servo";
+    public static final String  NAME_CLAW = "claw_servo";
 
     public static final String  NAME_ARM_ROTATE = "arm_rotation_motor";
     public static final String  NAME_ARM_EXTEND_M = "arm_extension_motor";
@@ -41,12 +40,9 @@ public class Constants {
     public static final double    ARM_CONTROL_STICK_THRESHOLD = 0.8; // How far the stick controlling the arm must be from its center for the arm to move
 
     // Component configuration
-    public static final double    LEFT_CLAW_CLOSED           = 0.77; // The position of the left claw when it's fully closed
-    public static final double    LEFT_CLAW_PARTLY           = 0.59; // The position of the left claw when it's partly open
-    public static final double    LEFT_CLAW_OPEN             = 0.30; // The position of the left claw when it's fully open
-    public static final double    RIGHT_CLAW_CLOSED          = 0.77; // The position of the right claw when it's fully closed
-    public static final double    RIGHT_CLAW_PARTLY          = 0.59; // The position of the right claw when it's partly open
-    public static final double    RIGHT_CLAW_OPEN            = 0.30; // The position of the right claw when it's fully open
+    public static final double    CLAW_CLOSED                = 0.77; // The position of the claw when it's fully closed
+    public static final double    CLAW_PARTLY                = 0.59; // The position of the claw when it's partly open
+    public static final double    CLAW_OPEN                  = 0.30; // The position of the claw when it's fully open
 
     public static final double    WRIST_POSITION_UP          = 0.62; // The servo position for the wrist when the arm is down the wrist is pointing straight up
 
