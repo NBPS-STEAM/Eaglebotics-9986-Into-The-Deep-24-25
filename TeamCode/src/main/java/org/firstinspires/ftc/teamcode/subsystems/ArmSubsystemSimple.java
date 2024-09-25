@@ -108,7 +108,9 @@ public class ArmSubsystemSimple extends SubsystemBase {
         // The angle for the rotation to point at, on a scale of 0 (straight down) to 1 (straight up)
         // Avoid going below the motor's zero position
         // Remember that the rotation motor's zero position will likely be above 0 on this scale
-        rotationMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRotation(scaled)));
+        if (wristServo != null) {
+            rotationMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRotation(scaled)));
+        }
     }
 
     public void applyExtensionPosition(double scaled) {
@@ -121,7 +123,9 @@ public class ArmSubsystemSimple extends SubsystemBase {
 
     public void applyWristPosition(double scaled) {
         // The angle for the wrist to point at, on a scale where 1 is up
-        wristServo.setPosition(Calculations.scaleToEncoderArmWrist(scaled));
+        if (wristServo != null) {
+            wristServo.setPosition(Calculations.scaleToEncoderArmWrist(scaled));
+        }
     }
 
     public void setRotationMotorPower(double power) {
@@ -140,16 +144,22 @@ public class ArmSubsystemSimple extends SubsystemBase {
         }
     }
 
+    public void clawSetPositionSafe(double position) {
+        if (clawServo != null) {
+            clawServo.setPosition(position);
+        }
+    }
+
     public void openClaw() {
-        clawServo.setPosition(Constants.CLAW_OPEN);
+        clawSetPositionSafe(Constants.CLAW_OPEN);
     }
 
     public void openPartlyClaw() {
-        clawServo.setPosition(Constants.CLAW_PARTLY);
+        clawSetPositionSafe(Constants.CLAW_PARTLY);
     }
 
     public void closeClaw() {
-        clawServo.setPosition(Constants.CLAW_CLOSED);
+        clawSetPositionSafe(Constants.CLAW_CLOSED);
     }
 
     public void toggleClaw() {

@@ -140,54 +140,70 @@ public class MecanumTeleOpTesting extends LinearOpMode {
 
 
         // Initialize the motors/hardware. The names used here must correspond to the names set on the driver control station.
-        DcMotor frontLeftDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_FL);
-        DcMotor backLeftDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BL);
-        DcMotor frontRightDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_FR);
-        DcMotor backRightDrive = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BR);
+        DcMotor frontLeftDrive = hardwareMap.tryGet(DcMotor.class, Constants.NAME_DRIVE_FL);
+        DcMotor backLeftDrive = hardwareMap.tryGet(DcMotor.class, Constants.NAME_DRIVE_BL);
+        DcMotor frontRightDrive = hardwareMap.tryGet(DcMotor.class, Constants.NAME_DRIVE_FR);
+        DcMotor backRightDrive = hardwareMap.tryGet(DcMotor.class, Constants.NAME_DRIVE_BR);
 
-        Servo clawServo = hardwareMap.get(Servo.class, Constants.NAME_CLAW);
+        Servo clawServo = hardwareMap.tryGet(Servo.class, Constants.NAME_CLAW);
 
-        DcMotor armLiftMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
-        DcMotor armTravelMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_EXTEND_M);
-        Servo armWristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
+        DcMotor armLiftMotor = hardwareMap.tryGet(DcMotor.class, Constants.NAME_ARM_ROTATE);
+        DcMotor armTravelMotor = hardwareMap.tryGet(DcMotor.class, Constants.NAME_ARM_EXTEND_M);
+        Servo armWristServo = hardwareMap.tryGet(Servo.class, Constants.NAME_ARM_WRIST);
 
         // Configure motors
-        frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
-        backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
-        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
-        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        if (frontLeftDrive != null) {
+            frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+            frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+        if (backLeftDrive != null) {
+            backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+            backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+        if (frontRightDrive != null) {
+            frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+            frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+        if (backRightDrive != null) {
+            backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+            backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
 
+        DriveSubsystem driveSubsystem = null;
+        if (frontLeftDrive != null && backLeftDrive != null && frontRightDrive != null && backRightDrive != null) {
+            driveSubsystem = new DriveSubsystem(hardwareMap, Constants.DRIVE_POWER_MULTIPLIER);
+        }
 
-        frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        if (clawServo != null) {
+            clawServo.setDirection(Servo.Direction.FORWARD);
+        }
 
-        frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        if (armWristServo != null) {
+            armWristServo.setDirection(Servo.Direction.REVERSE);
+        }
 
-        DriveSubsystem driveSubsystem = new DriveSubsystem(hardwareMap, Constants.DRIVE_POWER_MULTIPLIER);
+        if (armTravelMotor != null) {
+            armTravelMotor.setDirection(DcMotor.Direction.FORWARD);
+            armTravelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            armTravelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
 
-        clawServo.setDirection(Servo.Direction.FORWARD);
+        if (armLiftMotor != null) {
+            armLiftMotor.setDirection((DcMotor.Direction.FORWARD));
+            armLiftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            armLiftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
 
-        armWristServo.setDirection(Servo.Direction.REVERSE);
-
-        armTravelMotor.setDirection(DcMotor.Direction.FORWARD);
-        armTravelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        armTravelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        armLiftMotor.setDirection((DcMotor.Direction.FORWARD));
-        armLiftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        armLiftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        ArmSubsystemAdvanced armSubsystem = new ArmSubsystemAdvanced(hardwareMap);
-        armSubsystem.applyWristPosition(1.0);
+        //ArmSubsystemAdvanced armSubsystem = new ArmSubsystemAdvanced(hardwareMap);
+        //armSubsystem.applyWristPosition(1.0);
 
         // Wait for the game to start (driver presses PLAY)
         telemetry.addData("Status", "Initialized");
@@ -336,7 +352,7 @@ public class MecanumTeleOpTesting extends LinearOpMode {
             float upShift = Math.max(0.0f, rTNow - rTLast) * 0.05f;
             float downShift = Math.max(0.0f, lTNow - lTLast) * 0.05f;
             if (controlMode == 0) {
-                driveSubsystem.setPowerMultiplier(Math.max(Math.min(driveSubsystem.getPowerMultiplier() + upShift - downShift, 1), 0));
+                if (driveSubsystem != null) driveSubsystem.setPowerMultiplier(Math.max(Math.min(driveSubsystem.getPowerMultiplier() + upShift - downShift, 1), 0));
             } else if (controlMode == 1) {
                 armStendoPower = Math.max(Math.min(armStendoPower + upShift - downShift, 1), 0);
             } else {
@@ -357,8 +373,10 @@ public class MecanumTeleOpTesting extends LinearOpMode {
                 }
             } else if (controlMode < 3) {
                 // Control sticks control drive
-                QuadMotorValues<Double> drivePower = Calculations.mecanumDriveRobotCentric(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
-                driveSubsystem.setPower(drivePower);
+                if (driveSubsystem != null) {
+                    QuadMotorValues<Double> drivePower = Calculations.mecanumDriveRobotCentric(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+                    driveSubsystem.setPower(drivePower);
+                }
             }
 
 

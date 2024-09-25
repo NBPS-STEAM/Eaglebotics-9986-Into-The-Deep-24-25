@@ -274,7 +274,7 @@ code is called a library, and they can be imported into code files for access to
 Some libraries come built-in to FTC robot code or SUPRA, but some need to be installed manually.
 In some places, libraries are called packages. Libraries and packages usually mean the same thing.
 
-SUPRA comes preconfigured with FTCLib and Road Runner (last updated Aug 29 2024).
+SUPRA comes preconfigured with FTCLib and Road Runner (last updated Sep 24 2024).
 
 Features from installed libraries will appear in your autocomplete suggestions and will be
 automatically imported if used. If you want to use a new library that isn't installed, then you
