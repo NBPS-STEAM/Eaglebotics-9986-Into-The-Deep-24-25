@@ -32,8 +32,9 @@ package org.firstinspires.ftc.teamcode.teleop;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
+import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants;
@@ -165,61 +166,48 @@ public class MecanumTeleOpMode extends CommandOpMode {
         // Driving is done by the default command, which is set later in this method.
 
         // Reset Heading Direction
-        baseGamepad.getGamepadButton(GamepadKeys.Button.DPAD_DOWN) // Zero (reset) robot heading direction
-                .whenActive(new InstantCommand(driveSubsystem::zeroHeading));
+        bindToButtons(baseGamepad, driveSubsystem::zeroHeading, Button.DPAD_DOWN); // Zero (reset) robot heading direction
 
         // Drive Speeds
-        baseGamepad.getGamepadButton(GamepadKeys.Button.X) // Drive at fast speed
-                .whenActive(new InstantCommand(driveSubsystem::setFullSpeed));
-        baseGamepad.getGamepadButton(GamepadKeys.Button.A) // Drive at medium speed
-                .whenActive(new InstantCommand(driveSubsystem::setMediumSpeed));
-        baseGamepad.getGamepadButton(GamepadKeys.Button.B) // Drive at slow speed
-                .whenActive(new InstantCommand(driveSubsystem::setSlowSpeed));
+        bindToButtons(baseGamepad, driveSubsystem::setFullSpeed, Button.X); // Drive at fast speed
+        bindToButtons(baseGamepad, driveSubsystem::setMediumSpeed, Button.A); // Drive at medium speed
+        bindToButtons(baseGamepad, driveSubsystem::setSlowSpeed, Button.B); // Drive at slow speed
 
 
         // Arm Controls
 
         // Apply Set Positions
-        armGamepad.getGamepadButton(GamepadKeys.Button.A) // Move arm to 'stow' set position
-                .whenActive(new InstantCommand(() -> armSubsystem.applyNamedPosition("stow")));
-        armGamepad.getGamepadButton(GamepadKeys.Button.B) // Move arm to 'intake' set position
-                .whenActive(new InstantCommand(() -> armSubsystem.applyNamedPosition("intake")));
-        armGamepad.getGamepadButton(GamepadKeys.Button.X) // Move arm to 'basket low' set position
-                .whenActive(new InstantCommand(() -> armSubsystem.applyNamedPosition("basket low")));
-        armGamepad.getGamepadButton(GamepadKeys.Button.Y) // Move arm to 'basket high' set position
-                .whenActive(new InstantCommand(() -> armSubsystem.applyNamedPosition("basket high")));
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.B); // Move arm to 'intake' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("basket low"), Button.X); // Move arm to 'basket low' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("basket high"), Button.Y); // Move arm to 'basket high' set position
 
-        armGamepad.getGamepadButton(GamepadKeys.Button.START) // Move arm to 'hang part 1' set position, then press again to move to 'hang part 2'
-                .whenActive(new InstantCommand(() -> cyclePositions("hang part 1", "hang part 2")));
+        bindToButtons(armGamepad, () -> cyclePositions("hang part 1", "hang part 2"), Button.START); // Move arm to 'hang part 1' set position, then press again to move to 'hang part 2'
 
         // Intake Controls
-        armGamepad.getGamepadButton(GamepadKeys.Button.LEFT_STICK_BUTTON) // Toggle intake
-                .whenPressed(new InstantCommand(armSubsystem::toggleIntakeIn));
-        armGamepad.getGamepadButton(GamepadKeys.Button.RIGHT_STICK_BUTTON) // Toggle outtake
-                .whenPressed(new InstantCommand(armSubsystem::toggleIntakeOut));
+        bindToButtons(armGamepad, armSubsystem::toggleIntakeIn, Button.LEFT_STICK_BUTTON); // Toggle intake
+        bindToButtons(armGamepad, armSubsystem::toggleIntakeOut, Button.RIGHT_STICK_BUTTON); // Toggle outtake
 
         // Zero Arm Motors
         // These binds combine two triggers into one using and().
         // this turns the GamepadButton trigger into a regular Trigger. whenActive() is the equivalent to whenPressed() for a regular Trigger.
-        armGamepad.getGamepadButton(GamepadKeys.Button.BACK).and(
-        armGamepad.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)) // Zero (reset) extension motor
-                .whenActive(new InstantCommand(armSubsystem::zeroExtensionMotor));
-        armGamepad.getGamepadButton(GamepadKeys.Button.BACK).and(
-        armGamepad.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)) // Zero (reset) rotation motor
-                .whenActive(new InstantCommand(armSubsystem::zeroRotationMotor));
+        bindToButtons(armGamepad, armSubsystem::zeroExtensionMotor, Button.BACK, Button.LEFT_BUMPER); // Zero (reset) extension motor
+        bindToButtons(armGamepad, armSubsystem::zeroRotationMotor, Button.BACK, Button.RIGHT_BUMPER); // Zero (reset) rotation motor
 
         // Manual Arm Controls
-        armGamepad.getGamepadButton(GamepadKeys.Button.DPAD_UP) // Manually extend arm up
+        armGamepad.getGamepadButton(Button.DPAD_UP) // Manually extend arm up
                 .whileActiveContinuous(new RunCommand(() -> armSubsystem.setExtensionTargetDistance(100)))
                 .whenInactive(new InstantCommand(() -> armSubsystem.setExtensionTargetDistance(0)));
-        armGamepad.getGamepadButton(GamepadKeys.Button.DPAD_DOWN) // Manually extend arm down
+
+        armGamepad.getGamepadButton(Button.DPAD_DOWN) // Manually extend arm down
                 .whileActiveContinuous(new RunCommand(() -> armSubsystem.setExtensionTargetDistance(-100)))
                 .whenInactive(new InstantCommand(() -> armSubsystem.setExtensionTargetDistance(0)));
 
-        armGamepad.getGamepadButton(GamepadKeys.Button.DPAD_RIGHT) // Manually rotate arm up
+        armGamepad.getGamepadButton(Button.DPAD_RIGHT) // Manually rotate arm up
                 .whileActiveContinuous(new RunCommand(() -> armSubsystem.setRotationTargetDistance(100)))
                 .whenInactive(new InstantCommand(() -> armSubsystem.setRotationTargetDistance(0)));
-        armGamepad.getGamepadButton(GamepadKeys.Button.DPAD_LEFT) // Manually rotate arm down
+
+        armGamepad.getGamepadButton(Button.DPAD_LEFT) // Manually rotate arm down
                 .whileActiveContinuous(new RunCommand(() -> armSubsystem.setRotationTargetDistance(-100)))
                 .whenInactive(new InstantCommand(() -> armSubsystem.setRotationTargetDistance(0)));
 
@@ -235,6 +223,20 @@ public class MecanumTeleOpMode extends CommandOpMode {
 
 
     // Helper Methods
+
+    // Button... is the same as writing Button[], but when you use
+    // the method you can type multiple Buttons as if there were multiple parameters
+    // and they'll automatically be converted into an array.
+    // i.e. bindToButtons(gamepad, action, Button.A, Button.B);
+    public void bindToButtons(GamepadEx gamepad, Runnable action, Button... buttons) {
+        combineButtons(gamepad, buttons).whenActive(new InstantCommand(action));
+    }
+
+    public Trigger combineButtons(GamepadEx gamepad, Button... buttons) {
+        Trigger composite = gamepad.getGamepadButton(buttons[0]);
+        for (int i = 1; i < buttons.length; i++) composite = composite.and(gamepad.getGamepadButton(buttons[i]));
+        return composite;
+    }
 
     /**
      * Out of two arm positions, apply the first position, or apply the second position if already
