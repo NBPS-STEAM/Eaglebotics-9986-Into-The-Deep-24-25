@@ -1,3 +1,7 @@
+# The SUPRA Readme
+
+This is the readme file copied directly from SUPRA. Feel free to read.
+
 # SUPRA
 
 Welcome to SUPRA!

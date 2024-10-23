@@ -1,9 +1,10 @@
 package org.firstinspires.ftc.teamcode.helper;
 
 /*
- * This is a class which represents a position for the arm to go to.
+ * This is a class which represents a position for the arm assembly to go to.
  * It records target positions for the three parts of the arm. Positions are recorded as numbers on
  * a scale, not directly as encoder positions.
+ * Arm positions also record what state the intake is in (intaking, outtaking, stopped).
  *
  * When a position is applied, it is automatically converted from the scale to the equivalent
  * encoder position. This way, positions won't have to be redone whenever a change is made that
@@ -16,12 +17,18 @@ public class ArmPosition {
     private final double rotationAngle; // The angle for the rotation to point at, on a scale of 0 (straight down) to 1 (straight up)
     private final double extensionPosition; // The position for the extension to travel to, on a scale of inches
     private final double wristAngle; // The angle for the wrist to point at, on a scale where 1 is up
+    private final IntakeState intakeState; // What the intake should do at this position (intake, outtake, stop)
 
     // Constructor method
     public ArmPosition(double rotationAngle, double extensionPosition, double wristAngle) {
+        this(rotationAngle, extensionPosition, wristAngle, IntakeState.NONE);
+    }
+
+    public ArmPosition(double rotationAngle, double extensionPosition, double wristAngle, IntakeState intakeState) {
         this.rotationAngle = rotationAngle;
         this.extensionPosition = extensionPosition;
         this.wristAngle = wristAngle;
+        this.intakeState = intakeState;
     }
 
     // Getter methods
@@ -35,5 +42,9 @@ public class ArmPosition {
 
     public double getWristAngle() {
         return wristAngle;
+    }
+
+    public IntakeState getIntakeState() {
+        return intakeState;
     }
 }

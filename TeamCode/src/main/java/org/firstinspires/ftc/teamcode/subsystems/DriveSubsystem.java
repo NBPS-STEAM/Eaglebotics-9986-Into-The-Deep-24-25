@@ -74,7 +74,9 @@ public class DriveSubsystem extends SubsystemBase {
         this.imu.initialize(parameters);
     }
 
+
     // Methods
+
     public void drive(GamepadEx gamepad) {
         drive(gamepad.getLeftY(), gamepad.getLeftX(), gamepad.getRightX());
     }
@@ -150,7 +152,35 @@ public class DriveSubsystem extends SubsystemBase {
         imu.resetYaw();
     }
 
+
+    // Get motor properties
+
+    public QuadMotorValues<Double> getMotorPositions() {
+        return new QuadMotorValues<>(
+                Calculations.encoderToInchesDrive(frontLeftMotor.getCurrentPosition()),
+                Calculations.encoderToInchesDrive(frontRightMotor.getCurrentPosition()),
+                Calculations.encoderToInchesDrive(backLeftMotor.getCurrentPosition()),
+                Calculations.encoderToInchesDrive(backRightMotor.getCurrentPosition()));
+    }
+
+    public QuadMotorValues<Integer> getMotorPositionsUnscaled() {
+        return new QuadMotorValues<>(
+                frontLeftMotor.getCurrentPosition(),
+                frontRightMotor.getCurrentPosition(),
+                backLeftMotor.getCurrentPosition(),
+                backRightMotor.getCurrentPosition());
+    }
+
+    public QuadMotorValues<Double> getMotorPowers() {
+        return new QuadMotorValues<>(
+                frontLeftMotor.get(),
+                frontRightMotor.get(),
+                backLeftMotor.get(),
+                backRightMotor.get());
+    }
+
     // Getter methods
+
     public double getHeading() {
         return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
     }
@@ -163,7 +193,9 @@ public class DriveSubsystem extends SubsystemBase {
         return isFieldCentric;
     }
 
+
     // Setter methods
+
     public void setPowerMultiplier(double multiplier) {
         powerMultiplier = multiplier;
     }

@@ -57,36 +57,6 @@ public class Calculations {
         return new QuadMotorValues<>(frontLeftPower, frontRightPower, backLeftPower, backRightPower);
     }
 
-    // Joystick to arm target angle calculations
-    public static int vectorToArmPositionHalf(float vx, float vy) {
-        // Have you taken pre-calc yet?
-        // Turn the vector into an angle (spans 180 degrees, D: [0, 1], bearing south)
-        double angle = Math.atan2(Math.abs(vx), vy) / Math.PI;
-        // Limit angle to allowed range
-        angle = Math.min(angle, Constants.ROTATION_POSITION_MAX);
-        // Scale the angle to the arm's encoder
-        angle *= Constants.ROTATION_TICKS_180_DEGREES;
-        // Get an offset to account for motor's zero position
-        angle -= Constants.ROTATION_TICKS_180_DEGREES - Constants.ROTATION_TICKS_NORTH;
-        // Cast angle to int and make sure the result is acceptable (x >= 0)
-        return Math.max((int) angle, 0);
-    }
-
-    public static int vectorToArmPositionFull(float vx, float vy) {
-        // Turn the vector into an angle
-        double angle = Math.atan2(vx, vy) / Math.PI;
-        // Make the angle loop around
-        if (angle < 0) {
-            angle += 2;
-        }
-        // Scale the angle to the arm's encoder
-        angle *= Constants.ROTATION_TICKS_180_DEGREES;
-        // Get an offset to account for motor's zero position
-        angle -= Constants.ROTATION_TICKS_180_DEGREES - Constants.ROTATION_TICKS_NORTH;
-        // Cast angle to int and clamp within allowed range
-        return Math.min(Math.max((int) angle, 0), Constants.ROTATION_POSITION_MAX_OVERRIDE);
-    }
-
     // Position scaling calculations
     // The distance for a drive motor to spin to, on a scale of inches
     public static int inchesToEncoderDrive(double inches) {
@@ -119,12 +89,5 @@ public class Calculations {
     }
     public static double encoderToScaleArmWrist(double encoder) {
         return encoder + (1 - Constants.WRIST_POSITION_UP);
-    }
-
-    // The position for the wrist to go to for pointing at the target angle, accounting for arm rotation
-    public static double alignArmWristToAngle(double targetScaled, double rotationScaled) {
-        return Math.max(0, Math.min(1,
-                scaleToEncoderArmWrist(targetScaled - (rotationScaled - 0.5))
-        ));
     }
 }
