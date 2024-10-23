@@ -31,9 +31,6 @@ public class Constants {
 
     public static final String  NAME_IMU = "imu";
 
-    // Control configuration
-    public static final double    ARM_CONTROL_STICK_THRESHOLD = 0.8; // How far the stick controlling the arm must be from its center for the arm to move
-
     // Component configuration
     public static final double    INTAKE_POWER               = 1.0;  // The power (speed) at which the intake moves while intaking on a scale of 0 to 1
     public static final double    OUTTAKE_POWER              = 1.0;  // The power (speed) at which the intake moves while outtaking on a scale of 0 to 1
@@ -55,7 +52,5 @@ public class Constants {
     public static final double    DRIVE_POWER_MULTIPLIER_SLOW = 0.4; // The multiplier scale on the robot's drivetrain power (when going slow)
     public static final double    ARM_ROTATION_POWER          = 0.6; // The amount of power that the arm rotates with
     public static final double    ARM_EXTENSION_POWER         = 0.4; // The amount of power that the arm extends/retracts with
-    public static final double    MANUAL_ROTATION_SPEED       = 0.01; // The rate (0 to 1 scale per cycle) that the arm rotates with when controlled manually
-    public static final double    MANUAL_EXTENSION_SPEED      = 0.01; // The rate (0 to 1 scale per cycle) that the arm extends with when controlled manually
 
 }
