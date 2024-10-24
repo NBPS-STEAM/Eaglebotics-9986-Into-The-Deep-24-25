@@ -72,6 +72,9 @@ public class TelemetrySubsystem extends SubsystemBase {
         QuadMotorValues<Integer> drivePositionsUnscaled = driveSubsystem.getMotorPositionsUnscaled();
         QuadMotorValues<Double> drivePowers = driveSubsystem.getMotorPowers();
 
+        // Clear old info from the Driver Station
+        telemetry.clear();
+
         // Add info to be shown on the Driver Station
         telemetry.addData("Status", "Run Time: " + mainOpMode.getRuntime());
         telemetry.addData("", "");
@@ -100,7 +103,6 @@ public class TelemetrySubsystem extends SubsystemBase {
         telemetry.addData("Back  left/right motor power:", "%d%%, %d%%", Math.round(drivePowers.getBackLeftValue() * 100), Math.round(drivePowers.getBackRightValue() * 100));
 
         // Send info to the Driver Station
-        telemetry.clear();
         telemetry.update();
     }
 }
