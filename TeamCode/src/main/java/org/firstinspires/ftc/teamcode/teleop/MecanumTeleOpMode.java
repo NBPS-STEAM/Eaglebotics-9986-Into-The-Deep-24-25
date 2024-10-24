@@ -224,14 +224,19 @@ public class MecanumTeleOpMode extends CommandOpMode {
 
     // Helper Methods
 
-    // Button... is the same as writing Button[], but when you use
-    // the method you can type multiple Buttons as if there were multiple parameters
-    // and they'll automatically be converted into an array.
-    // i.e. bindToButtons(gamepad, action, Button.A, Button.B);
+    /**
+     * Bind an action to run through an instant command when one or more buttons of a gamepad are pressed.
+     */
     public void bindToButtons(GamepadEx gamepad, Runnable action, Button... buttons) {
         combineButtons(gamepad, buttons).whenActive(new InstantCommand(action));
     }
+    // Button... is the same as writing Button[], but when you use the method you can type multiple
+    // Buttons as if there were multiple parameters and they'll automatically be converted into an array.
+    // i.e. bindToButtons(gamepad, action, Button.A, Button.B);
 
+    /**
+     * Combine multiple buttons of a gamepad into a single trigger.
+     */
     public Trigger combineButtons(GamepadEx gamepad, Button... buttons) {
         Trigger composite = gamepad.getGamepadButton(buttons[0]);
         for (int i = 1; i < buttons.length; i++) composite = composite.and(gamepad.getGamepadButton(buttons[i]));
