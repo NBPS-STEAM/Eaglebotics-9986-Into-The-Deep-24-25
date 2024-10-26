@@ -15,18 +15,20 @@ public class ArmPosition {
 
     // Private instance variables
     private final double rotationAngle; // The angle for the rotation to point at, on a scale of 0 (straight down) to 1 (straight up)
-    private final double extensionPosition; // The position for the extension to travel to, on a scale of inches
+    private final double extensionPosition;
+    private final double raisePosition;
     private final double wristAngle; // The angle for the wrist to point at, on a scale where 1 is up
     private final IntakeState intakeState; // What the intake should do at this position (intake, outtake, stop)
 
     // Constructor method
-    public ArmPosition(double rotationAngle, double extensionPosition, double wristAngle) {
-        this(rotationAngle, extensionPosition, wristAngle, IntakeState.NONE);
+    public ArmPosition(double rotationAngle, double extensionPosition, double raisePosition, double wristAngle) {
+        this(rotationAngle, extensionPosition, raisePosition, wristAngle, IntakeState.NONE);
     }
 
-    public ArmPosition(double rotationAngle, double extensionPosition, double wristAngle, IntakeState intakeState) {
+    public ArmPosition(double rotationAngle, double extensionPosition, double raisePosition, double wristAngle, IntakeState intakeState) {
         this.rotationAngle = rotationAngle;
         this.extensionPosition = extensionPosition;
+        this.raisePosition = raisePosition;
         this.wristAngle = wristAngle;
         this.intakeState = intakeState;
     }
@@ -38,6 +40,10 @@ public class ArmPosition {
 
     public double getExtensionPosition() {
         return extensionPosition;
+    }
+
+    public double getRaisePosition() {
+        return raisePosition;
     }
 
     public double getWristAngle() {

@@ -81,7 +81,7 @@ public class DriveSubsystem extends SubsystemBase {
         drive(gamepad.getLeftY(), gamepad.getLeftX(), gamepad.getRightX());
     }
     public void drive(Gamepad gamepad) {
-        drive(-gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x);
+        drive(-gamepad.left_stick_y, -gamepad.left_stick_x, gamepad.right_stick_x);
     }
     public void drive(double axial, double lateral, double yaw) {
         double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);

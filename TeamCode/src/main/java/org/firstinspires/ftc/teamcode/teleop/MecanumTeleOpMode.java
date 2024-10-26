@@ -146,7 +146,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
 
         // Initialize arm for play
         // These named set positions are set in the ArmSubsystem class.
-        armSubsystem.applyNamedPosition("stow");
+        //armSubsystem.applyNamedPosition("stow");
 
         // Disable telemetry?
         // Uncomment to disable reporting telemetry (live information about the robot) to the Driver Station.

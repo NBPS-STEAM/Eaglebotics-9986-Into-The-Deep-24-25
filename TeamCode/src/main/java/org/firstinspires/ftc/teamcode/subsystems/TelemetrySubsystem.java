@@ -88,6 +88,11 @@ public class TelemetrySubsystem extends SubsystemBase {
         telemetry.addData("Arm extension encoder position:", armSubsystem.getExtensionPositionUnscaled());
         telemetry.addData("Is arm extension at target position?", armSubsystem.getExtensionMotor().atTargetPosition());
         telemetry.addData("", "");
+        telemetry.addData("Arm raise power level:", (Constants.ARM_RAISE_POWER * 100.0) + "%");
+        telemetry.addData("Arm raise scaled position:", armSubsystem.getRaisePosition());
+        telemetry.addData("Arm raise encoder position:", armSubsystem.getRaisePositionUnscaled());
+        telemetry.addData("Is arm raise at target position?", armSubsystem.getRaiseMotor().atTargetPosition());
+        telemetry.addData("", "");
         telemetry.addData("Arm rotation power level:", (Constants.ARM_ROTATION_POWER * 100.0) + "%");
         telemetry.addData("Arm rotation scaled position:", armSubsystem.getRotationPosition());
         telemetry.addData("Arm rotation encoder position:", armSubsystem.getRotationPositionUnscaled());

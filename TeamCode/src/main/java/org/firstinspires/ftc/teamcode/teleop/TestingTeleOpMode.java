@@ -36,6 +36,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TestingSubsystem;
 
 /*
@@ -89,29 +90,32 @@ public class TestingTeleOpMode extends CommandOpMode {
         // Initialize hardware variables
         gamepad = new GamepadEx(gamepad1);
         testingSubsystem = new TestingSubsystem(hardwareMap, telemetry);
+        // EMERGENCY!!!!11!
+        DriveSubsystem driveSubsystem = new DriveSubsystem(hardwareMap);
+        driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(gamepad2), driveSubsystem));
 
 
         // Controller bindings
 
         // Device Selection
 
-        bindTo(Button.DPAD_UP, () -> testingSubsystem.changeSelection(1)); // Move up the list to select a hardware device (motor/servo)
-        bindTo(Button.DPAD_DOWN, () -> testingSubsystem.changeSelection(-1)); // Move down the list to select a hardware device (motor/servo)
+        bindTo(Button.DPAD_UP, () -> testingSubsystem.changeSelection(-1)); // Move up the list to select a hardware device (motor/servo)
+        bindTo(Button.DPAD_DOWN, () -> testingSubsystem.changeSelection(1)); // Move down the list to select a hardware device (motor/servo)
         bindTo(Button.A, testingSubsystem::activateSelected); // Activate the selected hardware device (deactivating the previously active one, if any)
         bindTo(Button.B, testingSubsystem::deactivateCurrent); // Deactivate the currently active hardware device
 
         // Device Control
 
-        bindTo(Button.X, () -> testingSubsystem.toggleFrozen(gamepad.getLeftY())); // Toggle freezing the position of the left stick
+        bindTo(Button.X, testingSubsystem::toggleFrozen); // Toggle freezing the position of the left stick
         bindTo(Button.Y, testingSubsystem::zeroCurrent); // Zero the active hardware device
         bindTo(Button.START, testingSubsystem::reloadDeviceList); // Reload the list of CONFIGURED devices (physically plugging/unplugging a device will not result in a change)
 
-        schedule(new RunCommand(() -> testingSubsystem.moveCurrent(gamepad.getLeftY()))); // Move the active hardware device
+        testingSubsystem.setDefaultCommand(new RunCommand(() -> testingSubsystem.moveCurrent(gamepad.getLeftY()), testingSubsystem)); // Move the active hardware device
 
 
         // Report Telemetry (Default Command)
 
-        testingSubsystem.setDefaultCommand(new RunCommand(testingSubsystem::reportTelemetry, testingSubsystem));
+        schedule(new RunCommand(testingSubsystem::reportTelemetry));
     }
 
 

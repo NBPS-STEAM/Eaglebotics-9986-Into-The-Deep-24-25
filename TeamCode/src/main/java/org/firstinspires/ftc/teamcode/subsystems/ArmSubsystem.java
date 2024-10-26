@@ -26,6 +26,7 @@ public class ArmSubsystem extends SubsystemBase {
     // Hardware variables
     private final Motor rotationMotor;
     private final Motor extensionMotor;
+    private final Motor raiseMotor;
     private final Servo wristServo;
     private final CRServo intakeServo;
 
@@ -34,18 +35,20 @@ public class ArmSubsystem extends SubsystemBase {
     public ArmSubsystem(HardwareMap hardwareMap) {
         // Add all named arm positions
         namedPositions = new HashMap<>();
-        addNamedPosition("stow", new ArmPosition(0.4, 0.4, 0.4));
-        addNamedPosition("intake", new ArmPosition(0.4, 0.4, 0.4));
-        addNamedPosition("basket low", new ArmPosition(0.4, 0.4, 0.4));
-        addNamedPosition("basket high", new ArmPosition(0.4, 0.4, 0.4));
-        addNamedPosition("hang part 1", new ArmPosition(0.4, 0.4, 0.4));
-        addNamedPosition("hang part 2", new ArmPosition(0.4, 0.4, 0.4));
+        addNamedPosition("stow", new ArmPosition(0.15, 0, 0, 0.49, IntakeState.STOP));
+        addNamedPosition("intake", new ArmPosition(0.4, 0.4, 0.4, 0.51, IntakeState.INTAKE));
+        addNamedPosition("basket low", new ArmPosition(0.4, 0.4, 0.4, 0.4));
+        addNamedPosition("basket high", new ArmPosition(0.4, 0.4, 0.4, 0.4));
+        addNamedPosition("hang part 1", new ArmPosition(0.4, 0.4, 0.4, 0.4));
+        addNamedPosition("hang part 2", new ArmPosition(0.4, 0.4, 0.4, 0.4));
 
         // Get all of the hardware using the names set in the Constants file.
         this.rotationMotor = new Motor(hardwareMap, Constants.NAME_ARM_ROTATE);
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
         this.intakeServo = hardwareMap.get(CRServo.class, Constants.NAME_INTAKE);
-        this.extensionMotor = new Motor(hardwareMap, Constants.NAME_ARM_EXTEND_M);
+        this.extensionMotor = new Motor(hardwareMap, Constants.NAME_ARM_EXTEND);
+        this.raiseMotor = new Motor(hardwareMap, Constants.NAME_ARM_RAISE);
+
 
         // Configure hardware
         this.rotationMotor.setInverted(false);
@@ -63,6 +66,12 @@ public class ArmSubsystem extends SubsystemBase {
         this.extensionMotor.setRunMode(Motor.RunMode.PositionControl);
         this.extensionMotor.set(Constants.ARM_EXTENSION_POWER);
         this.extensionMotor.resetEncoder();
+
+        this.raiseMotor.setInverted(false);
+        this.raiseMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+        this.raiseMotor.setRunMode(Motor.RunMode.PositionControl);
+        this.raiseMotor.set(Constants.ARM_RAISE_POWER);
+        this.raiseMotor.resetEncoder();
     }
 
 
@@ -89,21 +98,22 @@ public class ArmSubsystem extends SubsystemBase {
     // Applying Arm Positions
 
     public void applyNamedPosition(String name) {
-        applyNamedPosition(name, true, true, true, true);
+        applyNamedPosition(name, true, true, true, true, true);
     }
 
-    public void applyNamedPosition(String name, boolean doRotation, boolean doExtension, boolean doWrist, boolean doIntake) {
+    public void applyNamedPosition(String name, boolean doRotation, boolean doExtension, boolean doRaise, boolean doWrist, boolean doIntake) {
         lastSetPosition = name;
-        applyPosition(getNamedPosition(name), doRotation, doExtension, doWrist, doIntake);
+        applyPosition(getNamedPosition(name), doRotation, doExtension, doRaise, doWrist, doIntake);
     }
 
     public void applyPosition(ArmPosition position) {
-        applyPosition(position, true, true, true, true);
+        applyPosition(position, true, true, true, true, true);
     }
 
-    public void applyPosition(ArmPosition position, boolean doRotation, boolean doExtension, boolean doWrist, boolean doIntake) {
+    public void applyPosition(ArmPosition position, boolean doRotation, boolean doExtension, boolean doRaise, boolean doWrist, boolean doIntake) {
         if (doRotation) applyRotationPosition(position.getRotationAngle());
         if (doExtension) applyExtensionPosition(position.getExtensionPosition());
+        if (doRaise) applyRaisePosition(position.getRaisePosition());
         if (doWrist) applyWristPosition(position.getWristAngle());
         if (doIntake) applyIntakeState(position.getIntakeState());
     }
@@ -119,6 +129,12 @@ public class ArmSubsystem extends SubsystemBase {
         // The position for the extension to extend to, on a scale of inches
         // Avoid going below the motor's zero position
         extensionMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmExtension(scaled)));
+    }
+
+    public void applyRaisePosition(double scaled) {
+        // The position for the extension to extend to, on a scale of inches
+        // Avoid going below the motor's zero position
+        raiseMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRaise(scaled)));
     }
 
     public void applyWristPosition(double scaled) {
@@ -187,6 +203,11 @@ public class ArmSubsystem extends SubsystemBase {
         extensionMotor.resetEncoder();
     }
 
+    public void zeroRaiseMotor() {
+        raiseMotor.resetEncoder();
+    }
+
+
     // Moving Motors
     // This is a way to move motors without changing them off of PositionControl mode.
     // It doesn't control very nicely, but it's better than nothing.
@@ -197,6 +218,10 @@ public class ArmSubsystem extends SubsystemBase {
 
     public void setExtensionTargetDistance(double distance) {
         extensionMotor.setTargetDistance(distance);
+    }
+
+    public void setRaiseTargetDistance(double distance) {
+        raiseMotor.setTargetDistance(distance);
     }
 
 
@@ -234,6 +259,16 @@ public class ArmSubsystem extends SubsystemBase {
         return extensionMotor.getCurrentPosition();
     }
 
+    /** @return The position that the raise has extended to, on a scale of inches */
+    public double getRaisePosition() {
+        return Calculations.encoderToScaleArmRaise(raiseMotor.getCurrentPosition());
+    }
+
+    /** @return The position that the raise has extended to, in encoder ticks */
+    public double getRaisePositionUnscaled() {
+        return raiseMotor.getCurrentPosition();
+    }
+
     /** @return The angle that the wrist is pointing at, on a scale where 1 is up */
     public double getWristPosition() {
         return Calculations.encoderToScaleArmWrist(wristServo.getPosition());
@@ -257,6 +292,10 @@ public class ArmSubsystem extends SubsystemBase {
 
     public Motor getExtensionMotor() {
         return extensionMotor;
+    }
+
+    public Motor getRaiseMotor() {
+        return raiseMotor;
     }
 
     public Servo getWristServo() {

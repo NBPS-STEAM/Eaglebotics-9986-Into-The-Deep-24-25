@@ -79,8 +79,15 @@ public class Calculations {
     public static int scaleToEncoderArmExtension(double scale) {
         return (int) (scale * Constants.EXTENSION_TICKS_1_INCH);
     }
+    public static int scaleToEncoderArmRaise(double scale) {
+        return (int) (scale * Constants.RAISE_TICKS_1_INCH);
+    }
     public static double encoderToScaleArmExtension(int encoder) {
         return (double) encoder / Constants.EXTENSION_TICKS_1_INCH;
+    }
+
+    public static double encoderToScaleArmRaise(int encoder) {
+        return (double) encoder / Constants.RAISE_TICKS_1_INCH;
     }
 
     // The angle for the wrist to point at, on a scale where 1 is up

@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Calculations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,11 +42,11 @@ public class TestingSubsystem extends SubsystemBase {
     private int crServoCount;
 
     private int selectedDeviceIndex;
+    private boolean isDeviceFrozen;
 
-    private Integer currentDeviceIndex;
+    private int currentDeviceIndex;
     private HardwareOption currentHardware;
     private Object currentDevice;
-    private Double frozenMoveAmount;
 
 
     // Constructor methods
@@ -118,7 +119,6 @@ public class TestingSubsystem extends SubsystemBase {
         currentDeviceIndex = selectedDeviceIndex;
         currentHardware = allDevices.get(selectedDeviceIndex).second;
         currentDevice = null;
-        frozenMoveAmount = null;
 
         switch (currentHardware) {
             case DC_MOTOR:
@@ -161,10 +161,9 @@ public class TestingSubsystem extends SubsystemBase {
                     break;
             }
         }
-        currentDeviceIndex = null;
+        currentDeviceIndex = -1;
         currentHardware = HardwareOption.NONE;
         currentDevice = null;
-        frozenMoveAmount = null;
     }
 
     // Device manipulation
@@ -175,7 +174,7 @@ public class TestingSubsystem extends SubsystemBase {
      * For a servo, {@code amount} is the target position.
      */
     public void moveCurrent(double amount) {
-        if (isFrozen()) amount = frozenMoveAmount;
+        if (isFrozen()) return;
         switch (currentHardware) {
             case DC_MOTOR:
                 ((DcMotor) currentDevice).setPower(amount);
@@ -203,36 +202,36 @@ public class TestingSubsystem extends SubsystemBase {
 
     /**
      * Freeze the currently activated device at the amount of power/position given here.
-     * Every time moveCurrent() is called while the device is frozen, the frozen value
-     * will be used in place of {@code amount}.
+     * Calls to moveCurrent() are ignored while the device is frozen.
+     * Frozen status is not reset when the active device changes!
      */
-    public void freezeMovement(double amount) {
-        frozenMoveAmount = amount;
+    public void freezeMovement() {
+        isDeviceFrozen = true;
     }
 
     /**
      * Unfreeze the currently activated device, so that calls to moveCurrent() obey the {@code amount} given there.
-     * @see #freezeMovement(double)
+     * @see #freezeMovement()
      */
     public void unfreezeMovement() {
-        frozenMoveAmount = null;
+        isDeviceFrozen = false;
     }
 
     /**
      * Whether the currently activated device is frozen.
-     * @see #freezeMovement(double)
+     * @see #freezeMovement()
      */
     public boolean isFrozen() {
-        return frozenMoveAmount != null;
+        return isDeviceFrozen;
     }
 
     /**
      * Freeze the currently activated device with this amount if not frozen, otherwise unfreeze.
-     * @see #freezeMovement(double)
+     * @see #freezeMovement()
      */
-    public void toggleFrozen(double amount) {
+    public void toggleFrozen() {
         if (isFrozen()) unfreezeMovement();
-        else freezeMovement(amount);
+        else freezeMovement();
     }
 
     // Telemetry
@@ -267,6 +266,8 @@ public class TestingSubsystem extends SubsystemBase {
         telemetry.addLine();
 
         // List all devices (indicate whether selected or activated)
+        telemetry.addData("Selected index", selectedDeviceIndex);
+        telemetry.addLine();
         telemetry.addLine("All configured motors:");
         reportDeviceNames(0, motorCount);
         telemetry.addLine();
@@ -315,14 +316,18 @@ public class TestingSubsystem extends SubsystemBase {
     }
 
     private void reportActiveDevice() {
-        telemetry.addData("Currently active device", allDevices.get(currentDeviceIndex).first + " (" + currentDevice.getClass().getCanonicalName() + ")");
+        telemetry.addData("Currently active device", allDevices.get(currentDeviceIndex).first + " (" + currentDevice.getClass().getSimpleName() + ")");
         switch (currentHardware) {
             case DC_MOTOR:
                 telemetry.addData("Motor power", ((DcMotor) currentDevice).getPower());
                 telemetry.addData("Motor position", ((DcMotor) currentDevice).getCurrentPosition());
+                telemetry.addData("Scaled motor position (rotation)", Calculations.encoderToScaleArmRotation(((DcMotor) currentDevice).getCurrentPosition()));
+                telemetry.addData("Scaled motor position (raise)", Calculations.encoderToScaleArmRaise(((DcMotor) currentDevice).getCurrentPosition()));
+                telemetry.addData("Scaled motor position (extension)", Calculations.encoderToScaleArmExtension(((DcMotor) currentDevice).getCurrentPosition()));
                 break;
             case SERVO:
                 telemetry.addData("Servo position", ((Servo) currentDevice).getPosition());
+                telemetry.addData("Scaled servo position (wrist)", Calculations.encoderToScaleArmWrist(((Servo) currentDevice).getPosition()));
                 break;
             case CR_SERVO:
                 telemetry.addData("Continuous rotation servo power", ((CRServo) currentDevice).getPower());
