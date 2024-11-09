@@ -2,8 +2,9 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
@@ -20,11 +21,16 @@ import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
  */
 public class DriveSubsystem extends SubsystemBase {
 
+    // Static variables
+    // Static variables aren't reset between opmodes, only when the robot turns off.
+    // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
+    public static boolean zeroOnInit = true;
+
     // Private instance variables (private variables that are in an instance of this class)
-    private final Motor frontLeftMotor; // 'final' means that this variable will never be set again after it is set in the constructor.
-    private final Motor frontRightMotor;
-    private final Motor backLeftMotor;
-    private final Motor backRightMotor;
+    private final DcMotor frontLeftMotor; // 'final' means that this variable will never be set again after it is set in the constructor.
+    private final DcMotor frontRightMotor;
+    private final DcMotor backLeftMotor;
+    private final DcMotor backRightMotor;
     private final IMU imu;
 
     private double powerMultiplier;
@@ -39,39 +45,45 @@ public class DriveSubsystem extends SubsystemBase {
     public DriveSubsystem(HardwareMap hardwareMap, double powerMultiplier) {
         this.powerMultiplier = powerMultiplier;
 
-        this.frontLeftMotor = new Motor(hardwareMap, Constants.NAME_DRIVE_FL);
-        this.frontRightMotor = new Motor(hardwareMap, Constants.NAME_DRIVE_FR);
-        this.backLeftMotor = new Motor(hardwareMap, Constants.NAME_DRIVE_BL);
-        this.backRightMotor = new Motor(hardwareMap, Constants.NAME_DRIVE_BR);
+        this.frontLeftMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_FL);
+        this.frontRightMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_FR);
+        this.backLeftMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BL);
+        this.backRightMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BR);
 
-        this.frontLeftMotor.setInverted(false);
-        this.backLeftMotor.setInverted(false);
-        this.frontRightMotor.setInverted(true);
-        this.backRightMotor.setInverted(true);
+        this.frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.backLeftMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
+        this.backRightMotor.setDirection(DcMotor.Direction.REVERSE);
 
-        this.frontLeftMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.backLeftMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.frontRightMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.backRightMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-
-        this.frontLeftMotor.setRunMode(Motor.RunMode.RawPower);
-        this.backLeftMotor.setRunMode(Motor.RunMode.RawPower);
-        this.frontRightMotor.setRunMode(Motor.RunMode.RawPower);
-        this.backRightMotor.setRunMode(Motor.RunMode.RawPower);
-
-        this.frontLeftMotor.resetEncoder();
-        this.backLeftMotor.resetEncoder();
-        this.frontRightMotor.resetEncoder();
-        this.backRightMotor.resetEncoder();
+        this.frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        this.backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        this.frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        this.backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Retrieve the IMU from the hardware map
         this.imu = hardwareMap.get(IMU.class, Constants.NAME_IMU);
         // Adjust the orientation parameters to match your robot
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
+                Constants.IMU_HUB_LOGO_DIRECTION,
+                Constants.IMU_HUB_USB_DIRECTION));
         // Without this, the REV Hub's orientation is assumed to be logo up / USB forward
         this.imu.initialize(parameters);
+
+        // Zero unless told not to
+        if (zeroOnInit) {
+            this.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+            zeroHeading();
+        }
+        zeroOnInit = true;
+
+        frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
 
@@ -112,17 +124,17 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     public void setPower(QuadMotorValues<Double> power) {
-        frontLeftMotor.set(power.getFrontLeftValue() * powerMultiplier);
-        frontRightMotor.set(power.getFrontRightValue() * powerMultiplier);
-        backLeftMotor.set(power.getBackLeftValue() * powerMultiplier);
-        backRightMotor.set(power.getBackRightValue() * powerMultiplier);
+        frontLeftMotor.setPower(power.getFrontLeftValue() * powerMultiplier);
+        frontRightMotor.setPower(power.getFrontRightValue() * powerMultiplier);
+        backLeftMotor.setPower(power.getBackLeftValue() * powerMultiplier);
+        backRightMotor.setPower(power.getBackRightValue() * powerMultiplier);
     }
 
     public void setPower(double power) {
-        frontLeftMotor.set(power * powerMultiplier);
-        frontRightMotor.set(power * powerMultiplier);
-        backLeftMotor.set(power * powerMultiplier);
-        backRightMotor.set(power * powerMultiplier);
+        frontLeftMotor.setPower(power * powerMultiplier);
+        frontRightMotor.setPower(power * powerMultiplier);
+        backLeftMotor.setPower(power * powerMultiplier);
+        backRightMotor.setPower(power * powerMultiplier);
     }
 
     public void setTargetPosition(QuadMotorValues<Integer> position) {
@@ -140,11 +152,16 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     // Method to zero all four motors
-    public void zeroMotors() {
-        frontLeftMotor.resetEncoder();
-        frontRightMotor.resetEncoder();
-        backLeftMotor.resetEncoder();
-        backRightMotor.resetEncoder();
+    public void zeroMotors(DcMotor.RunMode nextMode) {
+        frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        frontLeftMotor.setMode(nextMode);
+        backLeftMotor.setMode(nextMode);
+        frontRightMotor.setMode(nextMode);
+        backRightMotor.setMode(nextMode);
     }
 
     // Method to zero IMU heading
@@ -173,16 +190,20 @@ public class DriveSubsystem extends SubsystemBase {
 
     public QuadMotorValues<Double> getMotorPowers() {
         return new QuadMotorValues<>(
-                frontLeftMotor.get(),
-                frontRightMotor.get(),
-                backLeftMotor.get(),
-                backRightMotor.get());
+                frontLeftMotor.getPower(),
+                frontRightMotor.getPower(),
+                backLeftMotor.getPower(),
+                backRightMotor.getPower());
     }
 
     // Getter methods
 
     public double getHeading() {
-        return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        return getHeading(AngleUnit.RADIANS);
+    }
+
+    public double getHeading(AngleUnit angleUnit) {
+        return imu.getRobotYawPitchRollAngles().getYaw(angleUnit);
     }
 
     public double getPowerMultiplier() {

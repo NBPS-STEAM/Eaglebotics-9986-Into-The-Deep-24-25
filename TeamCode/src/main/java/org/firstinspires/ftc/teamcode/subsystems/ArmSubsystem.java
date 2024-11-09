@@ -1,11 +1,14 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.SubsystemBase;
-import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.ColorRangeSensor;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
@@ -19,59 +22,76 @@ import java.util.HashMap;
  */
 public class ArmSubsystem extends SubsystemBase {
 
+    // Static variables
+    // Static variables aren't reset between opmodes, only when the robot turns off.
+    // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
+    public static boolean zeroOnInit = true;
+
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
     private String lastSetPosition = "";
 
     // Hardware variables
-    private final Motor rotationMotor;
-    private final Motor extensionMotor;
-    private final Motor raiseMotor;
+    private final DcMotor rotationMotor;
+    private final DcMotor extensionMotor;
+    private final DcMotor raiseMotor;
     private final Servo wristServo;
     private final CRServo intakeServo;
+    private final ColorRangeSensor colorRangeSensor;
 
 
     // Constructor/initialization method
     public ArmSubsystem(HardwareMap hardwareMap) {
         // Add all named arm positions
         namedPositions = new HashMap<>();
-        addNamedPosition("stow", new ArmPosition(0.15, 0, 0, 0.49, IntakeState.STOP));
-        addNamedPosition("intake", new ArmPosition(0.4, 0.4, 0.4, 0.51, IntakeState.INTAKE));
-        addNamedPosition("basket low", new ArmPosition(0.4, 0.4, 0.4, 0.4));
-        addNamedPosition("basket high", new ArmPosition(0.4, 0.4, 0.4, 0.4));
-        addNamedPosition("hang part 1", new ArmPosition(0.4, 0.4, 0.4, 0.4));
-        addNamedPosition("hang part 2", new ArmPosition(0.4, 0.4, 0.4, 0.4));
+        addNamedPosition("stow", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.STOP));
+        addNamedPosition("intake stage 1", new ArmPosition(0.46, 2, 0, 1));
+        addNamedPosition("intake stage 2", new ArmPosition(0.46, 67, 0, 1));
+        addNamedPosition("intake stage 3", new ArmPosition(0.36, 67, 0, 1, IntakeState.INTAKE));
+        addNamedPosition("basket high", new ArmPosition(0.846, 67, -160, 1));
+        addNamedPosition("basket low", new ArmPosition(0.65, 2, -160, 1));
+        addNamedPosition("specimen high", new ArmPosition(0.846, 67, -160, 1));
+        addNamedPosition("specimen low", new ArmPosition(0.65, 2, -160, 1));
+
+        addNamedPosition("hang stage 1", new ArmPosition(0.9, 2, -160, 0.54, IntakeState.STOP));
+        addNamedPosition("hang stage 2", new ArmPosition(0.9, 2, 0, 0.54, IntakeState.STOP));
+
+        addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
 
         // Get all of the hardware using the names set in the Constants file.
-        this.rotationMotor = new Motor(hardwareMap, Constants.NAME_ARM_ROTATE);
+        this.rotationMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
+        this.extensionMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_EXTEND);
+        this.raiseMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RAISE);
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
         this.intakeServo = hardwareMap.get(CRServo.class, Constants.NAME_INTAKE);
-        this.extensionMotor = new Motor(hardwareMap, Constants.NAME_ARM_EXTEND);
-        this.raiseMotor = new Motor(hardwareMap, Constants.NAME_ARM_RAISE);
+        this.colorRangeSensor = hardwareMap.get(ColorRangeSensor.class, Constants.NAME_ARM_COLOR_RANGE);
 
 
         // Configure hardware
-        this.rotationMotor.setInverted(false);
-        this.rotationMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.rotationMotor.setRunMode(Motor.RunMode.PositionControl);
-        this.rotationMotor.set(Constants.ARM_ROTATION_POWER);
-        this.rotationMotor.resetEncoder();
+        this.rotationMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.rotationMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        this.wristServo.setDirection(Servo.Direction.REVERSE);
+        this.extensionMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.extensionMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        this.raiseMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.raiseMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        this.wristServo.setDirection(Servo.Direction.FORWARD);
 
         this.intakeServo.setDirection(CRServo.Direction.FORWARD);
 
-        this.extensionMotor.setInverted(false);
-        this.extensionMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.extensionMotor.setRunMode(Motor.RunMode.PositionControl);
-        this.extensionMotor.set(Constants.ARM_EXTENSION_POWER);
-        this.extensionMotor.resetEncoder();
+        // Zero unless told not to
+        if (zeroOnInit) {
+            this.rotationMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.extensionMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.raiseMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        }
+        zeroOnInit = true;
 
-        this.raiseMotor.setInverted(false);
-        this.raiseMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        this.raiseMotor.setRunMode(Motor.RunMode.PositionControl);
-        this.raiseMotor.set(Constants.ARM_RAISE_POWER);
-        this.raiseMotor.resetEncoder();
+        changeControlModeToRunToPosition(this.rotationMotor, Constants.ARM_ROTATION_POWER);
+        changeControlModeToRunToPosition(this.extensionMotor, Constants.ARM_EXTENSION_POWER);
+        changeControlModeToRunToPosition(this.raiseMotor, Constants.ARM_RAISE_POWER);
     }
 
 
@@ -111,6 +131,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyPosition(ArmPosition position, boolean doRotation, boolean doExtension, boolean doRaise, boolean doWrist, boolean doIntake) {
+        if (position == null) return; // Skip the rest of this method if an existing position wasn't provided.
         if (doRotation) applyRotationPosition(position.getRotationAngle());
         if (doExtension) applyExtensionPosition(position.getExtensionPosition());
         if (doRaise) applyRaisePosition(position.getRaisePosition());
@@ -118,28 +139,50 @@ public class ArmSubsystem extends SubsystemBase {
         if (doIntake) applyIntakeState(position.getIntakeState());
     }
 
+    public void moveMotorsToZero() {
+        applyRotationPositionUnscaled(0);
+        applyExtensionPositionUnscaled(0);
+        applyRaisePositionUnscaled(0);
+    }
+
     public void applyRotationPosition(double scaled) {
         // The angle for the rotation to point at, on a scale of 0 (straight down) to 1 (straight up)
-        // Avoid going below the motor's zero position
         // Remember that the rotation motor's zero position will likely be above 0 on this scale
-        rotationMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRotation(scaled)));
+        applyRotationPositionUnscaled(Calculations.scaleToEncoderArmRotation(scaled));
+    }
+
+    public void applyRotationPositionUnscaled(int encoder) {
+        checkControlModeRunToPosition(rotationMotor, Constants.ARM_ROTATION_POWER);
+        rotationMotor.setTargetPosition(encoder);
     }
 
     public void applyExtensionPosition(double scaled) {
         // The position for the extension to extend to, on a scale of inches
-        // Avoid going below the motor's zero position
-        extensionMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmExtension(scaled)));
+        applyExtensionPositionUnscaled(Calculations.scaleToEncoderArmExtension(scaled));
+    }
+
+    public void applyExtensionPositionUnscaled(int encoder) {
+        checkControlModeRunToPosition(extensionMotor, Constants.ARM_EXTENSION_POWER);
+        extensionMotor.setTargetPosition(encoder);
     }
 
     public void applyRaisePosition(double scaled) {
         // The position for the extension to extend to, on a scale of inches
-        // Avoid going below the motor's zero position
-        raiseMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRaise(scaled)));
+        applyRaisePositionUnscaled(Calculations.scaleToEncoderArmRaise(scaled));
+    }
+
+    public void applyRaisePositionUnscaled(int encoder) {
+        checkControlModeRunToPosition(raiseMotor, Constants.ARM_RAISE_POWER);
+        raiseMotor.setTargetPosition(encoder);
     }
 
     public void applyWristPosition(double scaled) {
         // The angle for the wrist to point at, on a scale where 1 is up
-        wristServo.setPosition(Calculations.scaleToEncoderArmWrist(scaled));
+        applyWristPositionUnscaled(Calculations.scaleToEncoderArmWrist(scaled));
+    }
+
+    public void applyWristPositionUnscaled(double encoder) {
+        wristServo.setPosition(encoder);
     }
 
     public void applyIntakeState(IntakeState state) {
@@ -172,6 +215,17 @@ public class ArmSubsystem extends SubsystemBase {
         intakeServo.setPower(0.0);
     }
 
+    /**
+     * @see #hasSampleInIntake()
+     */
+    public void stopIntakeIfHasSample() {
+        if (hasSampleInIntake() && (intakeServo.getPower() * Constants.INTAKE_POWER > 0)) {
+            // If it has a sample AND the servo is moving in the INTAKE direction...
+            // Because if the servo is outtaking, it shouldn't stop.
+            stopIntake();
+        }
+    }
+
     public void toggleIntakeIn() {
         toggleIntake(IntakeState.INTAKE);
     }
@@ -196,32 +250,97 @@ public class ArmSubsystem extends SubsystemBase {
     // Zeroing Motors
 
     public void zeroRotationMotor() {
-        rotationMotor.resetEncoder();
+        this.rotationMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        this.rotationMotor.setTargetPosition(0);
+        this.rotationMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        this.rotationMotor.setPower(Constants.ARM_ROTATION_POWER);
     }
 
     public void zeroExtensionMotor() {
-        extensionMotor.resetEncoder();
+        this.extensionMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        this.extensionMotor.setTargetPosition(0);
+        this.extensionMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        this.extensionMotor.setPower(Constants.ARM_EXTENSION_POWER);
     }
 
     public void zeroRaiseMotor() {
-        raiseMotor.resetEncoder();
+        this.raiseMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        this.raiseMotor.setTargetPosition(0);
+        this.raiseMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        this.raiseMotor.setPower(Constants.ARM_RAISE_POWER);
+    }
+
+    // Moving Motors Without Encoders
+
+    public void setRotationPower(double power) {
+        checkControlModeRunWithoutEncoder(rotationMotor);
+        rotationMotor.setPower(power);
+    }
+
+    public void setExtensionPower(double power) {
+        checkControlModeRunWithoutEncoder(extensionMotor);
+        extensionMotor.setPower(power);
+    }
+
+    public void setRaisePower(double power) {
+        checkControlModeRunWithoutEncoder(raiseMotor);
+        raiseMotor.setPower(power);
     }
 
 
-    // Moving Motors
-    // This is a way to move motors without changing them off of PositionControl mode.
-    // It doesn't control very nicely, but it's better than nothing.
+    // Checking and Setting Motor Modes
 
-    public void setRotationTargetDistance(double distance) {
-        rotationMotor.setTargetDistance(distance);
+    private void checkControlModeRunToPosition(DcMotor motor, double power) {
+        if (motor.getMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+            changeControlModeToRunToPosition(motor, power);
+        }
     }
 
-    public void setExtensionTargetDistance(double distance) {
-        extensionMotor.setTargetDistance(distance);
+    private void changeControlModeToRunToPosition(DcMotor motor, double power) {
+        motor.setTargetPosition(motor.getCurrentPosition());
+        motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        motor.setPower(power);
     }
 
-    public void setRaiseTargetDistance(double distance) {
-        raiseMotor.setTargetDistance(distance);
+    private void checkControlModeRunWithoutEncoder(DcMotor motor) {
+        if (motor.getMode() != DcMotor.RunMode.RUN_WITHOUT_ENCODER) {
+            changeControlModeToRunWithoutEncoder(motor);
+        }
+    }
+
+    private void changeControlModeToRunWithoutEncoder(DcMotor motor) {
+        motor.setPower(0);
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+
+    // Color/Range Sensor
+
+    /**
+     * Gets the color reading of the color/range sensor as a {@link NormalizedRGBA}, which is an
+     * object that stores an RGBA color value in a convenient form.
+     */
+    public NormalizedRGBA getColorReading() {
+        return colorRangeSensor.getNormalizedColors();
+    }
+
+    /**
+     * Determine whether a sample is in the intake, indicated by if something is close to the color/range sensor.
+     * @return Whether the distance reading of the color/range sensor is under the threshold set in {@link Constants}
+     */
+    public boolean hasSampleInIntake() {
+        return getRangeReadingMM() < Constants.INTAKE_RANGE_THRESHOLD;
+    }
+
+    /**
+     * @return The distance reading of the color/range sensor IN MILLIMETERS
+     */
+    public double getRangeReadingMM() {
+        return getRangeReading(DistanceUnit.MM);
+    }
+
+    public double getRangeReading(DistanceUnit unit) {
+        return colorRangeSensor.getDistance(unit);
     }
 
 
@@ -241,33 +360,66 @@ public class ArmSubsystem extends SubsystemBase {
 
     /** @return The angle that the rotation is pointing at, on a scale of 0 (straight down) to 1 (straight up) */
     public double getRotationPosition() {
-        return Calculations.encoderToScaleArmRotation(rotationMotor.getCurrentPosition());
+        return Calculations.encoderToScaleArmRotation(getRotationPositionUnscaled());
     }
 
     /** @return The angle that the rotation is pointing at, in encoder ticks */
-    public double getRotationPositionUnscaled() {
+    public int getRotationPositionUnscaled() {
         return rotationMotor.getCurrentPosition();
     }
 
+    /** @return The target angle that the rotation is trying to point at, on a scale of 0 (straight down) to 1 (straight up) */
+    public double getRotationTargetPosition() {
+        return Calculations.encoderToScaleArmRotation(getRotationTargetPositionUnscaled());
+    }
+
+    /** @return The target angle that the rotation is trying to point at, in encoder ticks */
+    public int getRotationTargetPositionUnscaled() {
+        return rotationMotor.getTargetPosition();
+    }
+
+
     /** @return The position that the extension has extended to, on a scale of inches */
     public double getExtensionPosition() {
-        return Calculations.encoderToScaleArmExtension(extensionMotor.getCurrentPosition());
+        return Calculations.encoderToScaleArmExtension(getExtensionPositionUnscaled());
     }
 
     /** @return The position that the extension has extended to, in encoder ticks */
-    public double getExtensionPositionUnscaled() {
+    public int getExtensionPositionUnscaled() {
         return extensionMotor.getCurrentPosition();
     }
 
+    /** @return The target position that the extension is trying to extend to, on a scale of inches */
+    public double getExtensionTargetPosition() {
+        return Calculations.encoderToScaleArmExtension(getExtensionTargetPositionUnscaled());
+    }
+
+    /** @return The target position that the extension is trying to extend to, in encoder ticks */
+    public int getExtensionTargetPositionUnscaled() {
+        return extensionMotor.getTargetPosition();
+    }
+
+
     /** @return The position that the raise has extended to, on a scale of inches */
     public double getRaisePosition() {
-        return Calculations.encoderToScaleArmRaise(raiseMotor.getCurrentPosition());
+        return Calculations.encoderToScaleArmRaise(getRaisePositionUnscaled());
     }
 
     /** @return The position that the raise has extended to, in encoder ticks */
-    public double getRaisePositionUnscaled() {
+    public int getRaisePositionUnscaled() {
         return raiseMotor.getCurrentPosition();
     }
+
+    /** @return The target position that the raise is trying to extend to, on a scale of inches */
+    public double getRaiseTargetPosition() {
+        return Calculations.encoderToScaleArmRaise(getRaiseTargetPositionUnscaled());
+    }
+
+    /** @return The target position that the raise is trying to extend to, in encoder ticks */
+    public int getRaiseTargetPositionUnscaled() {
+        return raiseMotor.getTargetPosition();
+    }
+
 
     /** @return The angle that the wrist is pointing at, on a scale where 1 is up */
     public double getWristPosition() {
@@ -286,15 +438,15 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Hardware Variables
 
-    public Motor getRotationMotor() {
+    public DcMotor getRotationMotor() {
         return rotationMotor;
     }
 
-    public Motor getExtensionMotor() {
+    public DcMotor getExtensionMotor() {
         return extensionMotor;
     }
 
-    public Motor getRaiseMotor() {
+    public DcMotor getRaiseMotor() {
         return raiseMotor;
     }
 
@@ -304,5 +456,9 @@ public class ArmSubsystem extends SubsystemBase {
 
     public CRServo getIntakeServo() {
         return intakeServo;
+    }
+
+    public ColorRangeSensor getColorRangeSensor() {
+        return colorRangeSensor;
     }
 }

@@ -1,16 +1,11 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.SubsystemBase;
-import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.hardware.motors.Motor;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.Gamepad;
-import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
 
@@ -77,37 +72,49 @@ public class TelemetrySubsystem extends SubsystemBase {
 
         // Add info to be shown on the Driver Station
         telemetry.addData("Status", "Run Time: " + mainOpMode.getRuntime());
-        telemetry.addData("", "");
-        telemetry.addData("Intake servo power:", armSubsystem.getIntakePower());
-        telemetry.addData("", "");
-        telemetry.addData("Wrist scaled position:", armSubsystem.getWristPosition());
-        telemetry.addData("Wrist servo position:", armSubsystem.getWristPositionUnscaled());
-        telemetry.addData("", "");
-        telemetry.addData("Arm extension power level:", (Constants.ARM_EXTENSION_POWER * 100.0) + "%");
-        telemetry.addData("Arm extension scaled position:", armSubsystem.getExtensionPosition());
-        telemetry.addData("Arm extension encoder position:", armSubsystem.getExtensionPositionUnscaled());
-        telemetry.addData("Is arm extension at target position?", armSubsystem.getExtensionMotor().atTargetPosition());
-        telemetry.addData("", "");
-        telemetry.addData("Arm raise power level:", (Constants.ARM_RAISE_POWER * 100.0) + "%");
-        telemetry.addData("Arm raise scaled position:", armSubsystem.getRaisePosition());
-        telemetry.addData("Arm raise encoder position:", armSubsystem.getRaisePositionUnscaled());
-        telemetry.addData("Is arm raise at target position?", armSubsystem.getRaiseMotor().atTargetPosition());
-        telemetry.addData("", "");
-        telemetry.addData("Arm rotation power level:", (Constants.ARM_ROTATION_POWER * 100.0) + "%");
-        telemetry.addData("Arm rotation scaled position:", armSubsystem.getRotationPosition());
-        telemetry.addData("Arm rotation encoder position:", armSubsystem.getRotationPositionUnscaled());
-        telemetry.addData("Is arm rotation at target position?", armSubsystem.getRotationMotor().atTargetPosition());
-        telemetry.addData("", "");
-        telemetry.addData("", "");
+        telemetry.addLine();
+        telemetry.addData("IMU heading direction (degrees)", driveSubsystem.getHeading(AngleUnit.DEGREES));
+        telemetry.addLine();
+        telemetry.addData("Intake sensor distance (mm)", armSubsystem.getRangeReadingMM());
+        telemetry.addData("Intake sensor color", colorToString(armSubsystem.getColorReading()));
+        telemetry.addLine();
+        telemetry.addData("Intake servo power", armSubsystem.getIntakePower());
+        telemetry.addLine();
+        telemetry.addData("Wrist scaled position", armSubsystem.getWristPosition());
+        telemetry.addData("Wrist servo position", armSubsystem.getWristPositionUnscaled());
+        telemetry.addLine();
+        telemetry.addData("Arm extension power level", (Constants.ARM_EXTENSION_POWER * 100.0) + "%");
+        telemetry.addData("Arm extension scaled position", armSubsystem.getExtensionPosition());
+        telemetry.addData("Arm extension encoder position", armSubsystem.getExtensionPositionUnscaled());
+        telemetry.addData("Arm extension scaled target position", armSubsystem.getExtensionTargetPosition());
+        telemetry.addData("Arm extension encoder target position", armSubsystem.getExtensionTargetPositionUnscaled());
+        telemetry.addLine();
+        telemetry.addData("Arm raise power level", (Constants.ARM_RAISE_POWER * 100.0) + "%");
+        telemetry.addData("Arm raise scaled position", armSubsystem.getRaisePosition());
+        telemetry.addData("Arm raise encoder position", armSubsystem.getRaisePositionUnscaled());
+        telemetry.addData("Arm raise scaled target position", armSubsystem.getRaiseTargetPosition());
+        telemetry.addData("Arm raise encoder target position", armSubsystem.getRaiseTargetPositionUnscaled());
+        telemetry.addLine();
+        telemetry.addData("Arm rotation power level", (Constants.ARM_ROTATION_POWER * 100.0) + "%");
+        telemetry.addData("Arm rotation scaled position", armSubsystem.getRotationPosition());
+        telemetry.addData("Arm rotation encoder position", armSubsystem.getRotationPositionUnscaled());
+        telemetry.addData("Arm rotation scaled target position", armSubsystem.getRotationTargetPosition());
+        telemetry.addData("Arm rotation encoder target position", armSubsystem.getRotationTargetPositionUnscaled());
+        telemetry.addLine();
+        telemetry.addLine();
         telemetry.addData("Drive motor power level:", (driveSubsystem.getPowerMultiplier() * 100.0) + "%");
-        telemetry.addData("Front left/right position in inches:", "%.2f, %.2f", drivePositions.getFrontLeftValue(), drivePositions.getFrontRightValue());
-        telemetry.addData("Back  left/right position in inches:", "%.2f, %.2f", drivePositions.getBackLeftValue(), drivePositions.getBackRightValue());
-        telemetry.addData("Front left/right encoder position:", "%d, %d", drivePositionsUnscaled.getFrontLeftValue(), drivePositionsUnscaled.getFrontRightValue());
-        telemetry.addData("Back  left/right encoder position:", "%d, %d", drivePositionsUnscaled.getBackLeftValue(), drivePositionsUnscaled.getBackRightValue());
-        telemetry.addData("Front left/right motor power:", "%d%%, %d%%", Math.round(drivePowers.getFrontLeftValue() * 100), Math.round(drivePowers.getFrontRightValue() * 100));
-        telemetry.addData("Back  left/right motor power:", "%d%%, %d%%", Math.round(drivePowers.getBackLeftValue() * 100), Math.round(drivePowers.getBackRightValue() * 100));
+        telemetry.addData("Front left/right motor positions (in)", "%.2f, %.2f", drivePositions.getFrontLeftValue(), drivePositions.getFrontRightValue());
+        telemetry.addData("Back  left/right motor positions (in)", "%.2f, %.2f", drivePositions.getBackLeftValue(), drivePositions.getBackRightValue());
+        telemetry.addData("Front left/right motor encoder positions", "%d, %d", drivePositionsUnscaled.getFrontLeftValue(), drivePositionsUnscaled.getFrontRightValue());
+        telemetry.addData("Back  left/right motor encoder positions", "%d, %d", drivePositionsUnscaled.getBackLeftValue(), drivePositionsUnscaled.getBackRightValue());
+        telemetry.addData("Front left/right motor powers", "%d%%, %d%%", Math.round(drivePowers.getFrontLeftValue() * 100.0), Math.round(drivePowers.getFrontRightValue() * 100.0));
+        telemetry.addData("Back  left/right motor powers", "%d%%, %d%%", Math.round(drivePowers.getBackLeftValue() * 100.0), Math.round(drivePowers.getBackRightValue() * 100.0));
 
         // Send info to the Driver Station
         telemetry.update();
+    }
+
+    public static String colorToString(NormalizedRGBA color) {
+        return "r: " + ((int) (color.red * 256f)) + " g: " + ((int) (color.green * 256f)) + " b: " + ((int) (color.blue * 256f));
     }
 }

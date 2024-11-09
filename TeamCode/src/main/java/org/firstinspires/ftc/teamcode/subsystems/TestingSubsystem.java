@@ -1,18 +1,24 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
-import android.util.Pair;
-
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.ColorRangeSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Calculations;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingCRServo;
+import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingDcMotor;
+import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingDevice;
+import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingNullDevice;
+import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingServo;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -24,29 +30,19 @@ import java.util.SortedSet;
  * <p>For more information, see TestingTeleOpMode.</p>
  */
 public class TestingSubsystem extends SubsystemBase {
-    enum HardwareOption {
-        NONE,
-        DC_MOTOR,
-        SERVO,
-        CR_SERVO,
-    }
-
 
     // Private Instance Variables
     private final HardwareMap hardwareMap;
     private final Telemetry telemetry;
 
-    private List<Pair<String, HardwareOption>> allDevices;
+    private List<ColorRangeSensor> colorRangeSensors;
+
+    private List<TestingDevice> allDevices;
     private int motorCount;
     private int servoCount;
     private int crServoCount;
 
-    private int selectedDeviceIndex;
-    private boolean isDeviceFrozen;
-
-    private int currentDeviceIndex;
-    private HardwareOption currentHardware;
-    private Object currentDevice;
+    private int selectionIndex;
 
 
     // Constructor methods
@@ -70,14 +66,25 @@ public class TestingSubsystem extends SubsystemBase {
      * <p>This is run on initialization.</p>
      */
     public void reloadDeviceList() {
-        deactivateCurrent();
+        // Deactivate all devices, if the list exists (list will be null if this is the first time)
+        if (allDevices != null) {
+            for (TestingDevice device : allDevices) {
+                device.deactivate();
+            }
+        }
 
-        selectedDeviceIndex = 0;
+        // Reset selection index
+        selectionIndex = 0;
 
+        // Recreate and populate allDevices with motors, servos, and continuous rotation (cr) servos
         allDevices = new ArrayList<>();
-        motorCount = addAllDeviceNames(DcMotor.class, HardwareOption.DC_MOTOR);
-        servoCount = addAllDeviceNames(Servo.class, HardwareOption.SERVO);
-        crServoCount = addAllDeviceNames(CRServo.class, HardwareOption.CR_SERVO);
+        motorCount = addAllDevicesAsTesting(allDevices, DcMotor.class, TestingDcMotor.class);
+        servoCount = addAllDevicesAsTesting(allDevices, Servo.class, TestingServo.class);
+        crServoCount = addAllDevicesAsTesting(allDevices, CRServo.class, TestingCRServo.class);
+
+        // Get all sensors
+        colorRangeSensors = hardwareMap.getAll(ColorRangeSensor.class);
+        colorRangeSensors.sort(Comparator.comparing(HardwareDevice::getDeviceName)); // Sort by device name
     }
 
     /**
@@ -89,13 +96,6 @@ public class TestingSubsystem extends SubsystemBase {
     }
 
     /**
-     * @return Whether there is an active device
-     */
-    public boolean isActiveDevice() {
-        return currentDevice != null;
-    }
-
-    /**
      * Increment the index of the selected device by {@code inc} places.
      * If the new index would be out of bounds, it will wrap around.
      */
@@ -104,134 +104,101 @@ public class TestingSubsystem extends SubsystemBase {
         if (hasNoDevices()) return;
         // % is the modulus operator.
         // If selectedDevice + inc is out of bounds of allDevices, it will wrap around.
-        selectedDeviceIndex = (selectedDeviceIndex + inc) % allDevices.size();
+        selectionIndex = (selectionIndex + inc) % allDevices.size();
+        if (selectionIndex < 0)
+        {
+            selectionIndex += allDevices.size();
+        }
+    }
+
+    /**
+     * @return The TestingDevice at the currently selected index.
+     */
+    public TestingDevice getSelection() {
+        // Sanity check: make sure there are devices
+        if (hasNoDevices()) return new TestingNullDevice("");
+        return allDevices.get(selectionIndex);
     }
 
     /**
      * Activate the currently selected device. This will initialize the hardware.
      */
     public void activateSelected() {
-        // Sanity check: make sure there are devices
-        if (hasNoDevices()) return;
-
-        deactivateCurrent();
-
-        currentDeviceIndex = selectedDeviceIndex;
-        currentHardware = allDevices.get(selectedDeviceIndex).second;
-        currentDevice = null;
-
-        switch (currentHardware) {
-            case DC_MOTOR:
-                DcMotor motor = hardwareMap.get(DcMotor.class, allDevices.get(selectedDeviceIndex).first);
-                motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                motor.setDirection(DcMotor.Direction.FORWARD);
-                motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                currentDevice = motor;
-                break;
-
-            case SERVO:
-                Servo servo = hardwareMap.get(Servo.class, allDevices.get(selectedDeviceIndex).first);
-                servo.setDirection(Servo.Direction.FORWARD);
-                currentDevice = servo;
-                break;
-
-            case CR_SERVO:
-                CRServo crServo = hardwareMap.get(CRServo.class, allDevices.get(selectedDeviceIndex).first);
-                crServo.setDirection(CRServo.Direction.FORWARD);
-                currentDevice = crServo;
-                break;
-        }
+        getSelection().activate(hardwareMap);
     }
 
     /**
-     * Deactivate the currently activated device. This will close the hardware.
+     * Deactivate the currently selected device. This will close the hardware.
      */
-    public void deactivateCurrent() {
-        if (currentDevice != null) { // sanity check; probably not necessary
-            switch (currentHardware) {
-                case DC_MOTOR:
-                    ((DcMotor) currentDevice).close();
-                    break;
-                case SERVO:
-                    ((Servo) currentDevice).close();
-                    break;
-                case CR_SERVO:
-                    ((CRServo) currentDevice).close();
-                    break;
-            }
-        }
-        currentDeviceIndex = -1;
-        currentHardware = HardwareOption.NONE;
-        currentDevice = null;
+    public void deactivateSelected() {
+        getSelection().deactivate();
     }
 
     // Device manipulation
 
     /**
-     * Move the currently activated motor, servo, or cr-servo.
+     * Move the currently selected motor, servo, or cr-servo.
      * For a motor or continuous rotation servo, {@code amount} is the amount of power.
      * For a servo, {@code amount} is the target position.
      */
-    public void moveCurrent(double amount) {
-        if (isFrozen()) return;
-        switch (currentHardware) {
-            case DC_MOTOR:
-                ((DcMotor) currentDevice).setPower(amount);
-                break;
-            case SERVO:
-                ((Servo) currentDevice).setPosition(amount);
-                break;
-            case CR_SERVO:
-                ((CRServo) currentDevice).setPower(amount);
-                break;
-        }
+    public void moveSelected(double amount) {
+        getSelection().move(amount);
     }
 
     /**
-     * Zero the currently activated device (if it can be zeroed).
+     * Offset the currently selected motor, servo, or cr-servo.
+     * For a motor or servo, {@code amount} is to offset the target position.
+     * For a continuous rotation servo, {@code amount} is the amount of power.
      */
-    public void zeroCurrent() {
-        switch (currentHardware) {
-            case DC_MOTOR:
-                ((DcMotor) currentDevice).setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                ((DcMotor) currentDevice).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                break;
-        }
+    public void offsetSelected(double amount) {
+        getSelection().offset(amount);
     }
 
     /**
-     * Freeze the currently activated device at the amount of power/position given here.
-     * Calls to moveCurrent() are ignored while the device is frozen.
-     * Frozen status is not reset when the active device changes!
+     * Zero the currently selected device (if it can be zeroed).
+     */
+    public void zeroSelected() {
+        getSelection().zero();
+    }
+
+    /**
+     * Store the current state (position/power) of the currently selected hardware device.
+     * @param slot The save slot to store to
+     */
+    public void storeStateSelected(int slot) {
+        getSelection().storeState(slot);
+    }
+
+    /**
+     * Load the stored state (position/power) of the currently selected hardware device.
+     * @param slot The save slot to load from
+     */
+    public void loadStateSelected(int slot) {
+        getSelection().loadState(slot);
+    }
+
+    /**
+     * Freeze the currently selected device so that it stays in place.
+     * Calls to moveSelected() are ignored while the device is frozen.
      */
     public void freezeMovement() {
-        isDeviceFrozen = true;
+        getSelection().freeze(true);
     }
 
     /**
-     * Unfreeze the currently activated device, so that calls to moveCurrent() obey the {@code amount} given there.
+     * Unfreeze the currently selected device so that it will move again.
      * @see #freezeMovement()
      */
     public void unfreezeMovement() {
-        isDeviceFrozen = false;
+        getSelection().freeze(false);
     }
 
     /**
-     * Whether the currently activated device is frozen.
-     * @see #freezeMovement()
-     */
-    public boolean isFrozen() {
-        return isDeviceFrozen;
-    }
-
-    /**
-     * Freeze the currently activated device with this amount if not frozen, otherwise unfreeze.
+     * Freeze the currently selected device if not frozen, otherwise unfreeze.
      * @see #freezeMovement()
      */
     public void toggleFrozen() {
-        if (isFrozen()) unfreezeMovement();
-        else freezeMovement();
+        getSelection().freeze(!getSelection().isFrozen());
     }
 
     // Telemetry
@@ -239,6 +206,20 @@ public class TestingSubsystem extends SubsystemBase {
     public void reportTelemetry() {
         // Clear old data
         telemetry.clear();
+
+        // Give instructions
+        telemetry.addLine("If a device is missing from the list, make sure it is configured using 'Configure Robot' on the Driver Station.");
+        telemetry.addLine();
+        telemetry.addLine("Select a device with the d-pad, then press A to activate.");
+        telemetry.addLine("Deactivate the currently selected device by pressing B.");
+        telemetry.addLine("Move the selected device with the left stick up/down.");
+        telemetry.addLine("Offset the selected device with the right stick up/down.");
+        telemetry.addLine("Freeze the selected device in place by pressing X. Press again to unfreeze.");
+        telemetry.addLine("Zero the selected device by pressing Y. Servos can't be zeroed.");
+        telemetry.addLine("Save the position of the selected device by pressing left bumper. Restore it by pressing right bumper. Hold select while pressing to use the second slot.");
+        telemetry.addLine("Reload the list of devices by pressing Start. This checks the configuration in 'Configure Robot', not physically attached hardware.");
+        telemetry.addLine();
+        telemetry.addLine();
 
         // List some data
         telemetry.addLine("!! ROBOT TESTING MODE !!");
@@ -253,20 +234,8 @@ public class TestingSubsystem extends SubsystemBase {
         telemetry.addLine();
         telemetry.addLine();
 
-        // Give instructions
-        telemetry.addLine("If a device is missing from the list, make sure it is configured using 'Configure Robot' on the Driver Station.");
-        telemetry.addLine();
-        telemetry.addLine("Select a device with the d-pad, then press A to activate.");
-        telemetry.addLine("Deactivate the currently active device by pressing B.");
-        telemetry.addLine("Move the active device with the left stick up/down.");
-        telemetry.addLine("Freeze the position of the left stick by pressing X. Press again to unfreeze.");
-        telemetry.addLine("Zero the active device by pressing Y. Servos can't be zeroed.");
-        telemetry.addLine("Reload the list of devices by pressing Start. This checks the configuration in 'Configure Robot', not physically attached hardware.");
-        telemetry.addLine();
-        telemetry.addLine();
-
         // List all devices (indicate whether selected or activated)
-        telemetry.addData("Selected index", selectedDeviceIndex);
+        telemetry.addData("Selected index", selectionIndex);
         telemetry.addLine();
         telemetry.addLine("All configured motors:");
         reportDeviceNames(0, motorCount);
@@ -279,9 +248,24 @@ public class TestingSubsystem extends SubsystemBase {
         telemetry.addLine();
         telemetry.addLine();
 
-        // Display info of currently active device
-        if (isActiveDevice()) {
-            reportActiveDevice();
+        // List all sensor readings
+        if (!colorRangeSensors.isEmpty()) {
+            telemetry.addLine("Readings of all configured color-range sensors:");
+            for (ColorRangeSensor sensor : colorRangeSensors) {
+                telemetry.addLine();
+                telemetry.addLine(sensor.getDeviceName());
+                telemetry.addData("Distance (mm)", sensor.getDistance(DistanceUnit.MM));
+                telemetry.addData("Color", TelemetrySubsystem.colorToString(sensor.getNormalizedColors()));
+            }
+            telemetry.addLine();
+            telemetry.addLine();
+        }
+
+        // Display info of currently active devices
+        telemetry.addLine("All active devices:");
+        telemetry.addLine();
+        for (TestingDevice device : allDevices) {
+            device.addStatusToTelemetry(telemetry);
         }
 
         // Send data to the Driver Station
@@ -292,14 +276,21 @@ public class TestingSubsystem extends SubsystemBase {
     // Helper Methods
 
     /**
-     * Adds the names of all configured devices in the hardware map matching
-     * the given type to allDevices with the given HardwareOption type.
-     * @return The number of names that were added
+     * Adds all configured devices in the hardware map matching the given {@link HardwareDevice}
+     * type to a list as instances of the given {@link TestingDevice} subclass.
+     * <p>The added devices are not initialized until {@link TestingDevice#activate(HardwareMap)} is used.</p>
+     * @return The number of devices that were added
      */
-    private int addAllDeviceNames(Class<? extends HardwareDevice> clazz, HardwareOption type) {
-        SortedSet<String> allNames = hardwareMap.getAllNames(clazz);
+    // T extends a cry for help
+    private<T extends TestingDevice> int addAllDevicesAsTesting(List<T> target, Class<? extends HardwareDevice> hardwareClass, Class<? extends T> testingClass) {
+        SortedSet<String> allNames = hardwareMap.getAllNames(hardwareClass);
         for (String device : allNames) {
-            allDevices.add(new Pair<>(device, type));
+            try {
+                target.add(testingClass.getConstructor(String.class).newInstance(device));
+            } catch (NoSuchMethodException | IllegalAccessException | InstantiationException |
+                     InvocationTargetException exception) {
+                // Oracle, why do these exceptions need to be checked?
+            }
         }
         return allNames.size();
     }
@@ -310,28 +301,8 @@ public class TestingSubsystem extends SubsystemBase {
      */
     private void reportDeviceNames(int start, int end) {
         for (int i = start; i < end; i++) {
-            String status = (i == selectedDeviceIndex ? ">" : " ") + (i == currentDeviceIndex ? "@" : " ");
-            telemetry.addData(status, allDevices.get(i).first);
-        }
-    }
-
-    private void reportActiveDevice() {
-        telemetry.addData("Currently active device", allDevices.get(currentDeviceIndex).first + " (" + currentDevice.getClass().getSimpleName() + ")");
-        switch (currentHardware) {
-            case DC_MOTOR:
-                telemetry.addData("Motor power", ((DcMotor) currentDevice).getPower());
-                telemetry.addData("Motor position", ((DcMotor) currentDevice).getCurrentPosition());
-                telemetry.addData("Scaled motor position (rotation)", Calculations.encoderToScaleArmRotation(((DcMotor) currentDevice).getCurrentPosition()));
-                telemetry.addData("Scaled motor position (raise)", Calculations.encoderToScaleArmRaise(((DcMotor) currentDevice).getCurrentPosition()));
-                telemetry.addData("Scaled motor position (extension)", Calculations.encoderToScaleArmExtension(((DcMotor) currentDevice).getCurrentPosition()));
-                break;
-            case SERVO:
-                telemetry.addData("Servo position", ((Servo) currentDevice).getPosition());
-                telemetry.addData("Scaled servo position (wrist)", Calculations.encoderToScaleArmWrist(((Servo) currentDevice).getPosition()));
-                break;
-            case CR_SERVO:
-                telemetry.addData("Continuous rotation servo power", ((CRServo) currentDevice).getPower());
-                break;
+            String status = (i == selectionIndex ? ">" : " ") + (allDevices.get(i).isActive() ? "@" : " ");
+            telemetry.addData(status, allDevices.get(i).getHardwareName());
         }
     }
 }

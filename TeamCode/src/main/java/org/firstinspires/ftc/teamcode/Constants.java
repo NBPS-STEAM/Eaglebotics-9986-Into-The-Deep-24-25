@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 
 /*
  * This is a class that contains numbers to be used elsewhere in the code.
@@ -26,34 +27,57 @@ public class Constants {
     public static final String  NAME_INTAKE = "intakeServo";
 
     public static final String  NAME_ARM_ROTATE = "rotationMotor";
-    public static final String NAME_ARM_EXTEND = "extensionMotor";
-    public static final String NAME_ARM_RAISE = "raiseMotor";
+    public static final String  NAME_ARM_EXTEND = "extensionMotor";
+    public static final String  NAME_ARM_RAISE = "raiseMotor";
     public static final String  NAME_ARM_WRIST = "wristServo";
+    public static final String  NAME_ARM_COLOR_RANGE = "colorRangeSensor";
 
     public static final String  NAME_IMU = "imu";
 
     // Component configuration
-    public static final double    INTAKE_POWER               = 1.0;  // The power (speed) at which the intake moves while intaking on a scale of 0 to 1
-    public static final double    OUTTAKE_POWER              = 1.0;  // The power (speed) at which the intake moves while outtaking on a scale of 0 to 1
-
-    public static final double    WRIST_POSITION_UP          = 1.0;  // (PLACEHOLDER) The servo position for the wrist when the arm is down the wrist is pointing straight up
+    public static final double    WRIST_POSITION_UP          = 0.81;  // The servo position of the wrist when it's pointing straight forward
 
     public static final int       EXTENSION_TICKS_1_INCH     = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm extension to extend 1 inch
-    public static final int       RAISE_TICKS_1_INCH         = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm extension to extend 1 inch
+    public static final int       RAISE_TICKS_1_INCH         = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm raise to extend 1 inch
 
-    public static final int       ROTATION_TICKS_180_DEGREES     = (1700 - 700) * 2; // The number of encoder ticks for the arm rotation to travel 180 degrees
-    public static final int       ROTATION_TICKS_NORTH           = 1700;     // The number of arm rotation encoder ticks at the north (straight up) position
+    public static final int       ROTATION_TICKS_180_DEGREES = (1650 - 650) * 2; // The number of encoder ticks for the arm rotation to travel 180 degrees
+    public static final int       ROTATION_TICKS_NORTH       = 1650;     // The number of arm rotation encoder ticks at the north (straight up) position
 
-    public static final double    DRIVE_TICKS_REVOLUTION     = 537.6;  // (PLACEHOLDER) The number of encoder ticks in one revolution of a drive motor
-    public static final double    WHEEL_CIRCUMFERENCE_INCHES = (96 / 25.4) * Math.PI; // (PLACEHOLDER) The approximate circumference of a drive motor's wheel
+    public static final double    DRIVE_TICKS_REVOLUTION     = 537.6;  // The number of encoder ticks in one revolution of a drive motor
+    public static final double    WHEEL_CIRCUMFERENCE_INCHES = (96 / 25.4) * Math.PI; // The approximate circumference of a drive motor's wheel
                                                                               // Wheels are 96mm in diameter, this must be converted to inches
+
+    public static final RevHubOrientationOnRobot.LogoFacingDirection
+            IMU_HUB_LOGO_DIRECTION = RevHubOrientationOnRobot.LogoFacingDirection.UP;
+    public static final RevHubOrientationOnRobot.UsbFacingDirection
+            IMU_HUB_USB_DIRECTION = RevHubOrientationOnRobot.UsbFacingDirection.LEFT;
 
     // TeleOp configuration
     public static final double    DRIVE_POWER_MULTIPLIER      = 1.0; // The multiplier scale on the robot's drivetrain power
     public static final double    DRIVE_POWER_MULTIPLIER_MED  = 0.6; // The multiplier scale on the robot's drivetrain power (when going medium speed)
     public static final double    DRIVE_POWER_MULTIPLIER_SLOW = 0.4; // The multiplier scale on the robot's drivetrain power (when going slow)
+
     public static final double    ARM_ROTATION_POWER          = 0.6; // The amount of power that the arm rotates with
-    public static final double    ARM_EXTENSION_POWER         = 0.4; // The amount of power that the arm extends/retracts with
-    public static final double    ARM_RAISE_POWER             = 0.4;
+    public static final double    ARM_EXTENSION_POWER         = 0.6; // The amount of power that the arm extends/retracts with
+    public static final double    ARM_RAISE_POWER             = 0.6; // The amount of power that the arm rises/lowers with
+
+    public static final double    ARM_ROTATION_POWER_MANUAL   = 0.5; // The amount of power that the arm rotates with (MANUAL CONTROL)
+    public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // The amount of power that the arm extends/retracts with (MANUAL CONTROL)
+    public static final double    ARM_RAISE_POWER_MANUAL      = 0.5; // The amount of power that the arm rises/lowers with (MANUAL CONTROL)
+
+    public static final double    INTAKE_POWER                = 1.0;  // The power (speed) at which the intake moves while intaking on a scale of -1 to 1
+    public static final double    OUTTAKE_POWER               = -1.0; // The power (speed) at which the intake moves while outtaking on a scale of -1 to 1
+
+    public static final double    INTAKE_RANGE_THRESHOLD      = 50.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this, then it has a sample.
+
+    public static final double    STICK_COMMAND_THRESHOLD     = 0.8;  // If a controller joystick moves father than this, it can trigger a command.
+
+
+    // Testing TeleOp configuration
+    public static final int       TESTING_SAVE_STATE_SLOTS    = 2;    // The number of slots that a device can store its state to in testing mode
+    public static final double    TESTING_MODE_CHANGE_THRESHOLD = 0.2;// The absolute distance that a joystick must move for move/offset mode to switch in testing mode
+
+    public static final double    TESTING_DCMOTOR_OFFSET_RATE = 5.0;  // The rate at which a DC motor's position will be changed when offsetting in testing mode
+    public static final double    TESTING_SERVO_OFFSET_RATE   = 0.02; // The rate at which a DC motor's position will be changed when offsetting in testing mode
 
 }
