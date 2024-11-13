@@ -1,3 +1,14 @@
+## SUPRA
+
+Welcome to SUPRA!
+
+Do your work in the [TeamCode/java](TeamCode/src/main/java/org/firstinspires/ftc/teamcode) folder.
+
+Get started by reading [readme.md in TeamCode](TeamCode/src/main/java/org/firstinspires/ftc/teamcode/readme.md).
+
+The rest of this file is copied from the official [FTC Robot Controller SDK](https://github.com/FIRST-Tech-Challenge/FtcRobotController),
+which SUPRA is based on.
+
 ## NOTICE
 
 This repository contains the public FTC SDK for the INTO THE DEEP (2024-2025) competition season.

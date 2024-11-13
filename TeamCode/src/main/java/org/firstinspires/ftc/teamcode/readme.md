@@ -13,6 +13,8 @@ Written by Kelin Levine
 ## Get Started
 
 The first step to writing robot code all by yourself is to [install Android Studio](https://developer.android.com/studio).
+Alternatively, [install IntelliJ IDEA](https://www.jetbrains.com/idea/download) with the [Android and Android Design Tools plugins](https://www.jetbrains.com/help/idea/create-your-first-android-application.html).
+
 Continue after you've done that and have this file open in the editor.
 
 If you want to use SUPRA for your team, you should make a fork of this repository on GitHub,
@@ -60,13 +62,13 @@ It's recommended to program your teleop routines using command-based programming
 
 ## Autonomous Opmodes
 
-FINISH LATER
+INCOMPLETE, PLEASE COME BACK LATER
 
 Make sure to check the competition manual for measurements!
 
 ## A (Very Brief) Intro to Java
 
-FINISH LATER
+INCOMPLETE, PLEASE COME BACK LATER
 
 ## Command-Based Programming
 
@@ -99,7 +101,7 @@ you just want to jump into code, you're ready to start learning by yourself.
 
 ## Commenting
 
-Comments are FINISH LATER
+Comments are... (INCOMPLETE, PLEASE COME BACK LATER)
 
 Comments as much for organization as they are for explaining things. If you organize your code
 well, then you won't have to comment much at all. The important part is being able to retrace
@@ -162,7 +164,7 @@ waste precious moments in a match figuring out who does what next.
 It's good to not have to remember things or read instructions mid-match. If you can make patterns
 in how buttons are laid out, it will be easier to avoid pressing the wrong button.
 
-If it suits the game, you can use a state machine FINISH LATER
+If it suits the game, you can use a state machine. (INCOMPLETE, PLEASE COME BACK LATER)
 
 If you use position control, you should also have a way to bypass it to control the motors manually
 and reset them in case of emergency. You probably won't need it, but it would be real embarrassing
@@ -241,7 +243,7 @@ impossible to safely change (amend) or delete a commit once it's pushed*. You mu
 commit. You can cancel or amend your last commit if you forget something *before* pushing,
 but not after.
 
-Second is something called a "merge conflict". FINISH LATER
+Second is something called a "merge conflict". (INCOMPLETE, PLEASE COME BACK LATER)
 
 Try to avoid the following things when working with other people:
 * Working on a file that someone else is also working on (causes merge conflicts)
