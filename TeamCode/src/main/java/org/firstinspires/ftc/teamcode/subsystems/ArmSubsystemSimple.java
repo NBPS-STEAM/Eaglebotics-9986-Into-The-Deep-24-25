@@ -108,7 +108,7 @@ public class ArmSubsystemSimple extends SubsystemBase {
         // The angle for the rotation to point at, on a scale of 0 (straight down) to 1 (straight up)
         // Avoid going below the motor's zero position
         // Remember that the rotation motor's zero position will likely be above 0 on this scale
-        if (wristServo != null) {
+        if (rotationMotor != null) {
             rotationMotor.setTargetPosition(Math.max(0, Calculations.scaleToEncoderArmRotation(scaled)));
         }
     }
