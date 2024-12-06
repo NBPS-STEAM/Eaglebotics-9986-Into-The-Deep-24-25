@@ -118,25 +118,17 @@ public class ArmSubsystem extends SubsystemBase {
     // Applying Arm Positions
 
     public void applyNamedPosition(String name) {
-        applyNamedPosition(name, true, true, true, true, true);
-    }
-
-    public void applyNamedPosition(String name, boolean doRotation, boolean doExtension, boolean doRaise, boolean doWrist, boolean doIntake) {
         lastSetPosition = name;
-        applyPosition(getNamedPosition(name), doRotation, doExtension, doRaise, doWrist, doIntake);
+        applyPosition(getNamedPosition(name));
     }
 
     public void applyPosition(ArmPosition position) {
-        applyPosition(position, true, true, true, true, true);
-    }
-
-    public void applyPosition(ArmPosition position, boolean doRotation, boolean doExtension, boolean doRaise, boolean doWrist, boolean doIntake) {
         if (position == null) return; // Skip the rest of this method if an existing position wasn't provided.
-        if (doRotation) applyRotationPosition(position.getRotationAngle());
-        if (doExtension) applyExtensionPosition(position.getExtensionPosition());
-        if (doRaise) applyRaisePosition(position.getRaisePosition());
-        if (doWrist) applyWristPosition(position.getWristAngle());
-        if (doIntake) applyIntakeState(position.getIntakeState());
+        applyRotationPosition(position.getRotationAngle());
+        applyExtensionPosition(position.getExtensionPosition());
+        applyRaisePosition(position.getRaisePosition());
+        applyWristPosition(position.getWristAngle());
+        applyIntakeState(position.getIntakeState());
     }
 
     public void moveMotorsToZero() {
