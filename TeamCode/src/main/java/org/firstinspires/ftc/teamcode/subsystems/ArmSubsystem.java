@@ -58,7 +58,7 @@ public class ArmSubsystem extends SubsystemBase {
 
         addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
 
-        // Get all of the hardware using the names set in the Constants file.
+        // Get all the hardware using the names set in the Constants file.
         this.rotationMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
         this.extensionMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_EXTEND);
         this.raiseMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RAISE);
@@ -80,6 +80,8 @@ public class ArmSubsystem extends SubsystemBase {
         this.wristServo.setDirection(Servo.Direction.FORWARD);
 
         this.intakeServo.setDirection(CRServo.Direction.FORWARD);
+
+        this.colorRangeSensor.enableLed(false);
 
         // Zero unless told not to
         if (zeroOnInit) {
