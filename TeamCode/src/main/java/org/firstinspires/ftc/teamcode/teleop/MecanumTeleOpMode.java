@@ -29,15 +29,10 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
-import com.arcrobotics.ftclib.command.Command;
 import com.arcrobotics.ftclib.command.CommandOpMode;
-import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
-import com.arcrobotics.ftclib.command.SequentialCommandGroup;
-import com.arcrobotics.ftclib.command.WaitCommand;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -103,12 +98,12 @@ import java.util.function.DoubleSupplier;
  *
  *
  * Controller 2 (arm driver):
- * East (B/○) button    |   Move arm to 'stow' set position
- * South (A/X) button   |   Move arm to 'intake stage 1' set position
- * West (X/□) button    |   Move arm to 'intake stage 2' set position
- * North (Y/Δ) button   |   Move arm to 'intake stage 3' set position
- * Left stick button    |   Toggle outtake
- * Right stick button   |   Toggle intake
+ * South (A/X) button   |   Move arm to 'stow' set position
+ * West (X/□) button    |   Move arm to 'intake' set position
+ * East (B/○) button    |   Intelligently cycle intake states
+ * North (Y/Δ) button   |   Release arm rotation (so that it does not hold its position)
+ * Left bumper          |   Start outtake
+ * Right bumper         |   Stop intake
  * Left stick up        |   Move arm to 'basket high' set position
  * Left stick down      |   Move arm to 'basket low' set position
  * Right stick up       |   Move arm to 'specimen high' set position
@@ -185,11 +180,11 @@ public class MecanumTeleOpMode extends CommandOpMode {
         // Arm Controls
 
         // Apply Set Positions
-        // These named set positions are set in the ArmSubsystem class.
-        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.B); // Move arm to 'stow' set position
-        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake stage 1"), Button.A); // Move arm to 'intake stage 1' set position
-        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake stage 2"), Button.X); // Move arm to 'intake stage 2' set position
-        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake stage 3"), Button.Y); // Move arm to 'intake stage 3' set position
+        // These named set positions are defined in the ArmSubsystem class.
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
+        bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
+        bindToButtons(armGamepad, () -> armSubsystem.setRotationPower(0), Button.Y); // Release arm rotation (so that it does not hold its position)
 
         bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high")); // Move arm to 'basket high' set position
         bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low")); // Move arm to 'basket low' set position
@@ -199,20 +194,20 @@ public class MecanumTeleOpMode extends CommandOpMode {
         //bindToButtons(armGamepad, () -> cyclePositions("hang stage 1", "hang stage 2"), Button.START); // Move arm to 'hang stage 1' set position, then press again to move to 'hang stage 2'
 
         // Intake Controls
-        bindToButtons(armGamepad, armSubsystem::toggleIntakeOut, Button.LEFT_STICK_BUTTON); // Toggle outtake
-        bindToButtons(armGamepad, armSubsystem::toggleIntakeIn, Button.RIGHT_STICK_BUTTON); // Toggle intake
+        bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.LEFT_BUMPER, Button.BACK); // Start outtake
+        bindToButtonButNot(armGamepad, armSubsystem::stopIntake, Button.RIGHT_BUMPER, Button.BACK); // Stop intake
 
         // Zero Arm Motors
-        bindToButtons(armGamepad, armSubsystem::zeroExtensionMotor, Button.BACK, Button.LEFT_BUMPER); // Zero (reset) extension motor
-        bindToButtons(armGamepad, armSubsystem::zeroRotationMotor, Button.BACK, Button.RIGHT_BUMPER); // Zero (reset) rotation motor
-        bindToButtons(armGamepad, armSubsystem::zeroRaiseMotor, Button.BACK, Button.START); // Zero (reset) raise motor
+        bindToButtons(armGamepad, armSubsystem::zeroExtensionMotor, Button.LEFT_BUMPER, Button.BACK); // Zero (reset) extension motor
+        bindToButtons(armGamepad, armSubsystem::zeroRotationMotor, Button.RIGHT_BUMPER, Button.BACK); // Zero (reset) rotation motor
+        bindToButtons(armGamepad, armSubsystem::zeroRaiseMotor, Button.START, Button.BACK); // Zero (reset) raise motor
 
         // Manual Arm Controls
-        combineButtons(armGamepad, Button.DPAD_UP).and(combineButtons(armGamepad, Button.BACK).negate()) // Manually extend arm up
+        buttonButNot(armGamepad, Button.DPAD_UP, Button.BACK) // Manually extend arm up
                 .whenActive(() -> armSubsystem.setExtensionPower(Constants.ARM_EXTENSION_POWER_MANUAL))
                 .whenInactive(() -> armSubsystem.setExtensionPower(0));
 
-        combineButtons(armGamepad, Button.DPAD_DOWN).and(combineButtons(armGamepad, Button.BACK).negate()) // Manually extend arm down
+        buttonButNot(armGamepad, Button.DPAD_DOWN, Button.BACK) // Manually extend arm down
                 .whenActive(() -> armSubsystem.setExtensionPower(-Constants.ARM_EXTENSION_POWER_MANUAL))
                 .whenInactive(() -> armSubsystem.setExtensionPower(0));
 
@@ -224,11 +219,11 @@ public class MecanumTeleOpMode extends CommandOpMode {
                 .whenActive(() -> armSubsystem.setRotationPower(-Constants.ARM_ROTATION_POWER_MANUAL))
                 .whenInactive(() -> armSubsystem.setRotationPower(0));
 
-        combineButtons(armGamepad, Button.BACK, Button.DPAD_UP) // Manually raise arm up
+        combineButtons(armGamepad, Button.DPAD_UP, Button.BACK) // Manually raise arm up
                 .whenActive(() -> armSubsystem.setRaisePower(Constants.ARM_RAISE_POWER_MANUAL))
                 .whenInactive(() -> armSubsystem.setRaisePower(0));
 
-        combineButtons(armGamepad, Button.BACK, Button.DPAD_DOWN) // Manually raise arm down
+        combineButtons(armGamepad, Button.DPAD_DOWN, Button.BACK) // Manually raise arm down
                 .whenActive(() -> armSubsystem.setRaisePower(-Constants.ARM_RAISE_POWER_MANUAL))
                 .whenInactive(() -> armSubsystem.setRaisePower(0));
 
@@ -259,6 +254,13 @@ public class MecanumTeleOpMode extends CommandOpMode {
     // i.e. bindToButtons(gamepad, action, Button.A, Button.B);
 
     /**
+     * Bind an action to run through an instant command when a button of a gamepad is pressed and another button of that same gamepad is not pressed.
+     */
+    public void bindToButtonButNot(GamepadEx gamepad, Runnable action, Button button, Button notButton) {
+        buttonButNot(gamepad, button, notButton).whenActive(action); // action is put in an InstantCommand automatically by whenActive()
+    }
+
+    /**
      * Combine multiple buttons of a gamepad into a single trigger.
      */
     public Trigger combineButtons(GamepadEx gamepad, Button... buttons) {
@@ -268,6 +270,13 @@ public class MecanumTeleOpMode extends CommandOpMode {
         Trigger composite = gamepad.getGamepadButton(buttons[0]);
         for (int i = 1; i < buttons.length; i++) composite = composite.and(gamepad.getGamepadButton(buttons[i]));
         return composite;
+    }
+
+    /**
+     * Get a trigger for a button, but active only while another button is not pressed.
+     */
+    public Trigger buttonButNot(GamepadEx gamepad, Button button, Button notButton) {
+        return gamepad.getGamepadButton(button).and(gamepad.getGamepadButton(notButton).negate());
     }
 
     /**

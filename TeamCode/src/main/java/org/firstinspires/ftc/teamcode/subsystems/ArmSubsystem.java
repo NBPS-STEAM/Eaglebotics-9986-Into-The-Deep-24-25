@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
-import com.arcrobotics.ftclib.command.SubsystemBase;
+import com.arcrobotics.ftclib.command.*;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorRangeSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -29,7 +29,9 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
+    private final Command smartIntakeCommand;
     private String lastSetPosition = "";
+    private IntakeState intakeState = IntakeState.STOP;
 
     // Hardware variables
     private final DcMotor rotationMotor;
@@ -44,10 +46,9 @@ public class ArmSubsystem extends SubsystemBase {
     public ArmSubsystem(HardwareMap hardwareMap) {
         // Add all named arm positions
         namedPositions = new HashMap<>();
-        addNamedPosition("stow", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.STOP));
-        addNamedPosition("intake stage 1", new ArmPosition(0.46, 2, 0, 1));
-        addNamedPosition("intake stage 2", new ArmPosition(0.46, 67, 0, 1));
-        addNamedPosition("intake stage 3", new ArmPosition(0.36, 67, 0, 1, IntakeState.INTAKE));
+        addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.STOP));
+        addNamedPosition("stow", new ArmPosition(0.46, 2, 0, 0.54, IntakeState.STOP));
+        addNamedPosition("intake", new ArmPosition(0.46, 67, 0, 1, IntakeState.INTAKE));
         addNamedPosition("basket high", new ArmPosition(0.846, 67, -160, 1));
         addNamedPosition("basket low", new ArmPosition(0.65, 2, -160, 1));
         addNamedPosition("specimen high", new ArmPosition(0.846, 67, -160, 1));
@@ -94,6 +95,9 @@ public class ArmSubsystem extends SubsystemBase {
         changeControlModeToRunToPosition(this.rotationMotor, Constants.ARM_ROTATION_POWER);
         changeControlModeToRunToPosition(this.extensionMotor, Constants.ARM_EXTENSION_POWER);
         changeControlModeToRunToPosition(this.raiseMotor, Constants.ARM_RAISE_POWER);
+
+        // Prepare smart intake cycle command
+        smartIntakeCommand = generateSmartIntakeCommand();
     }
 
 
@@ -182,15 +186,16 @@ public class ArmSubsystem extends SubsystemBase {
     public void applyIntakeState(IntakeState state) {
         // The state for the intake to go to (stopped, intaking, outtaking)
         // If the state is NONE, then nothing happens. The intake will continue doing what it was doing before.
+        if (state != IntakeState.NONE) intakeState = state;
         switch (state) {
             case STOP:
-                stopIntake();
+                intakeServo.setPower(0.0);
                 break;
             case INTAKE:
-                startIntake();
+                intakeServo.setPower(Constants.INTAKE_POWER);
                 break;
             case OUTTAKE:
-                startOuttake();
+                intakeServo.setPower(Constants.OUTTAKE_POWER);
                 break;
         }
     }
@@ -198,23 +203,22 @@ public class ArmSubsystem extends SubsystemBase {
     // Controlling the Intake
 
     public void startIntake() {
-        intakeServo.setPower(Constants.INTAKE_POWER);
+        applyIntakeState(IntakeState.INTAKE);
     }
 
     public void startOuttake() {
-        intakeServo.setPower(Constants.OUTTAKE_POWER);
+        applyIntakeState(IntakeState.OUTTAKE);
     }
 
     public void stopIntake() {
-        intakeServo.setPower(0.0);
+        applyIntakeState(IntakeState.STOP);
     }
 
     /**
      * @see #hasSampleInIntake()
      */
     public void stopIntakeIfHasSample() {
-        if (hasSampleInIntake() && (intakeServo.getPower() * Constants.INTAKE_POWER > 0)) {
-            // If it has a sample AND the servo is moving in the INTAKE direction...
+        if (hasSampleInIntake() && intakeState == IntakeState.INTAKE) {
             // Because if the servo is outtaking, it shouldn't stop.
             stopIntake();
         }
@@ -234,11 +238,46 @@ public class ArmSubsystem extends SubsystemBase {
          measure their position. getPosition() is always equivalent to the last value of
          setPosition(), so this is an adequate way to tell if the intake is moving.
          This wouldn't work with motors because no encoder is 100% accurate. */
-        if (intakeServo.getPower() == 0.0) {
+        if (intakeState == IntakeState.STOP) {
             applyIntakeState(toggleOnState);
         } else {
             stopIntake();
         }
+    }
+
+    /**
+     * Cycle through possible actions of the intake depending on the state of the intake and robot.
+     * This will run as an uninterruptible command requiring this ArmSubsystem.
+     * <p>OUTTAKE: Stop the intake and wait briefly (to block consecutive activations)</p>
+     * <p>STOP: Start the intake and watch for samples</p>
+     * <p>INTAKE: Wait briefly, then stop the intake and move to "stow" position</p>
+     */
+    public void cycleIntakeSmart() {
+        smartIntakeCommand.schedule(false);
+    }
+
+    private Command generateSmartIntakeCommand() {
+        // wowza
+        ArmSubsystem subsystem = this;
+        CommandBase finalCommand = new SelectCommand(
+                new HashMap<Object, Command>() {{
+                    put(IntakeState.STOP, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::startIntake)
+                    ));
+                    put(IntakeState.INTAKE, new SequentialCommandGroup(
+                            new WaitCommand(500),
+                            new InstantCommand(subsystem::stopIntake),
+                            new InstantCommand(() -> subsystem.applyNamedPosition("stow"))
+                    ));
+                    put(IntakeState.OUTTAKE, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::stopIntake),
+                            new WaitCommand(500)
+                    ));
+                }},
+                this::getIntakeState
+        );
+        finalCommand.addRequirements(this);
+        return finalCommand;
     }
 
     // Zeroing Motors
@@ -428,6 +467,10 @@ public class ArmSubsystem extends SubsystemBase {
     public double getIntakePower() {
         // The power that the intake is moving with
         return intakeServo.getPower();
+    }
+
+    public IntakeState getIntakeState() {
+        return intakeState;
     }
 
     // Hardware Variables
