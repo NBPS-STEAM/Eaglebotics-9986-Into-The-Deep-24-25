@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.arcrobotics.ftclib.command.*;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorRangeSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -31,14 +30,14 @@ public class ArmSubsystem extends SubsystemBase {
     private final HashMap<String, ArmPosition> namedPositions;
     private final Command smartIntakeCommand;
     private String lastSetPosition = "";
-    private IntakeState intakeState = IntakeState.STOP;
+    private IntakeState intakeState = IntakeState.NONE;
 
     // Hardware variables
     private final DcMotor rotationMotor;
     private final DcMotor extensionMotor;
     private final DcMotor raiseMotor;
     private final Servo wristServo;
-    private final CRServo intakeServo;
+    private final Servo intakeServo;
     private final ColorRangeSensor colorRangeSensor;
 
 
@@ -46,16 +45,17 @@ public class ArmSubsystem extends SubsystemBase {
     public ArmSubsystem(HardwareMap hardwareMap) {
         // Add all named arm positions
         namedPositions = new HashMap<>();
-        addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.STOP));
-        addNamedPosition("stow", new ArmPosition(0.46, 2, 0, 0.54, IntakeState.STOP));
-        addNamedPosition("intake", new ArmPosition(0.46, 67, 0, 1, IntakeState.INTAKE));
-        addNamedPosition("basket high", new ArmPosition(0.846, 67, -160, 1));
-        addNamedPosition("basket low", new ArmPosition(0.65, 2, -160, 1));
-        addNamedPosition("specimen high", new ArmPosition(0.846, 67, -160, 1));
-        addNamedPosition("specimen low", new ArmPosition(0.65, 2, -160, 1));
+        //(NOT UPDATED) addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.INTAKE));
+        addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
+        addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
+        addNamedPosition("intake specimen", new ArmPosition(0.22, 2, 0, 1.334, IntakeState.PRIMED_SPECIMEN));
+        addNamedPosition("basket high", new ArmPosition(0.9, 67, 160, 1.625));
+        addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
+        addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
+        addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
 
-        addNamedPosition("hang stage 1", new ArmPosition(0.9, 2, -160, 0.54, IntakeState.STOP));
-        addNamedPosition("hang stage 2", new ArmPosition(0.9, 2, 0, 0.54, IntakeState.STOP));
+        //(NOT UPDATED) addNamedPosition("hang stage 1", new ArmPosition(0.9, 2, 160, 0.54));
+        //(NOT UPDATED) addNamedPosition("hang stage 2", new ArmPosition(0.9, 2, 0, 0.54));
 
         addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
 
@@ -64,23 +64,23 @@ public class ArmSubsystem extends SubsystemBase {
         this.extensionMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_EXTEND);
         this.raiseMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RAISE);
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
-        this.intakeServo = hardwareMap.get(CRServo.class, Constants.NAME_INTAKE);
+        this.intakeServo = hardwareMap.get(Servo.class, Constants.NAME_INTAKE);
         this.colorRangeSensor = hardwareMap.get(ColorRangeSensor.class, Constants.NAME_ARM_COLOR_RANGE);
 
 
         // Configure hardware
-        this.rotationMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.rotationMotor.setDirection(Constants.DIRECTION_ARM_ROTATE);
         this.rotationMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        this.extensionMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.extensionMotor.setDirection(Constants.DIRECTION_ARM_EXTEND);
         this.extensionMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        this.raiseMotor.setDirection(DcMotor.Direction.FORWARD);
+        this.raiseMotor.setDirection(Constants.DIRECTION_ARM_RAISE);
         this.raiseMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        this.wristServo.setDirection(Servo.Direction.FORWARD);
+        this.wristServo.setDirection(Constants.DIRECTION_ARM_WRIST);
 
-        this.intakeServo.setDirection(CRServo.Direction.FORWARD);
+        this.intakeServo.setDirection(Constants.DIRECTION_INTAKE);
 
         this.colorRangeSensor.enableLed(false);
 
@@ -184,18 +184,23 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyIntakeState(IntakeState state) {
-        // The state for the intake to go to (stopped, intaking, outtaking)
+        // The state for the intake to go to (primed, intaking, outtaking)
         // If the state is NONE, then nothing happens. The intake will continue doing what it was doing before.
-        if (state != IntakeState.NONE) intakeState = state;
         switch (state) {
-            case STOP:
-                intakeServo.setPower(0.0);
+            case PRIMED_SAMPLE:
+            case PRIMED_SPECIMEN:
+                if (intakeState != IntakeState.INTAKE) {
+                    intakeState = state;
+                    intakeServo.setPosition(Constants.INTAKE_PRIME_POSITION);
+                }
                 break;
             case INTAKE:
-                intakeServo.setPower(Constants.INTAKE_POWER);
+                intakeState = state;
+                intakeServo.setPosition(Constants.INTAKE_POSITION);
                 break;
             case OUTTAKE:
-                intakeServo.setPower(Constants.OUTTAKE_POWER);
+                intakeState = state;
+                intakeServo.setPosition(Constants.OUTTAKE_POSITION);
                 break;
         }
     }
@@ -210,47 +215,30 @@ public class ArmSubsystem extends SubsystemBase {
         applyIntakeState(IntakeState.OUTTAKE);
     }
 
-    public void stopIntake() {
-        applyIntakeState(IntakeState.STOP);
+    public void primeIntakeSample() {
+        applyIntakeState(IntakeState.PRIMED_SAMPLE);
+    }
+
+    public void primeIntakeSpecimen() {
+        applyIntakeState(IntakeState.PRIMED_SPECIMEN);
     }
 
     /**
      * @see #hasSampleInIntake()
      */
-    public void stopIntakeIfHasSample() {
-        if (hasSampleInIntake() && intakeState == IntakeState.INTAKE) {
-            // Because if the servo is outtaking, it shouldn't stop.
-            stopIntake();
-        }
-    }
-
-    public void toggleIntakeIn() {
-        toggleIntake(IntakeState.INTAKE);
-    }
-
-    public void toggleIntakeOut() {
-        toggleIntake(IntakeState.OUTTAKE);
-    }
-
-    public void toggleIntake(IntakeState toggleOnState) {
-        /* Usually, comparing numbers with decimals using == doesn't work because the slightest
-         difference will result in the numbers no longer matching. However, servos don't actually
-         measure their position. getPosition() is always equivalent to the last value of
-         setPosition(), so this is an adequate way to tell if the intake is moving.
-         This wouldn't work with motors because no encoder is 100% accurate. */
-        if (intakeState == IntakeState.STOP) {
-            applyIntakeState(toggleOnState);
-        } else {
-            stopIntake();
+    public void intakeIfHasSample() {
+        if ((intakeState == IntakeState.PRIMED_SAMPLE || intakeState == IntakeState.PRIMED_SPECIMEN) && hasSampleInIntake()) {
+            // Because if the servo is not primed, it shouldn't intake.
+            cycleIntakeSmart();
         }
     }
 
     /**
      * Cycle through possible actions of the intake depending on the state of the intake and robot.
      * This will run as an uninterruptible command requiring this ArmSubsystem.
-     * <p>OUTTAKE: Stop the intake and wait briefly (to block consecutive activations)</p>
-     * <p>STOP: Start the intake and watch for samples</p>
-     * <p>INTAKE: Wait briefly, then stop the intake and move to "stow" position</p>
+     * <p>OUTTAKE: Prime the intake and watch for samples</p>
+     * <p>PRIMED: Close the intake and wait briefly, then move to "stow" position</p>
+     * <p>INTAKE: Open the intake and wait briefly (to block consecutive activations)</p>
      */
     public void cycleIntakeSmart() {
         smartIntakeCommand.schedule(false);
@@ -259,18 +247,20 @@ public class ArmSubsystem extends SubsystemBase {
     private Command generateSmartIntakeCommand() {
         // wowza
         ArmSubsystem subsystem = this;
+        CommandBase primeCommand = new SequentialCommandGroup(
+                new InstantCommand(subsystem::startIntake),
+                new WaitCommand(500),
+                new InstantCommand(() -> subsystem.applyNamedPosition("stow"))
+        );
         CommandBase finalCommand = new SelectCommand(
                 new HashMap<Object, Command>() {{
-                    put(IntakeState.STOP, new SequentialCommandGroup(
-                            new InstantCommand(subsystem::startIntake)
-                    ));
-                    put(IntakeState.INTAKE, new SequentialCommandGroup(
-                            new WaitCommand(500),
-                            new InstantCommand(subsystem::stopIntake),
-                            new InstantCommand(() -> subsystem.applyNamedPosition("stow"))
-                    ));
                     put(IntakeState.OUTTAKE, new SequentialCommandGroup(
-                            new InstantCommand(subsystem::stopIntake),
+                            new InstantCommand(subsystem::primeIntakeSample)
+                    ));
+                    put(IntakeState.PRIMED_SAMPLE, primeCommand);
+                    put(IntakeState.PRIMED_SPECIMEN, primeCommand);
+                    put(IntakeState.INTAKE, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::startOuttake),
                             new WaitCommand(500)
                     ));
                 }},
@@ -362,7 +352,11 @@ public class ArmSubsystem extends SubsystemBase {
      * @return Whether the distance reading of the color/range sensor is under the threshold set in {@link Constants}
      */
     public boolean hasSampleInIntake() {
-        return getRangeReadingMM() < Constants.INTAKE_RANGE_THRESHOLD;
+        if (intakeState == IntakeState.PRIMED_SPECIMEN) {
+            return getRangeReadingMM() < Constants.INTAKE_SPECIMEN_THRESHOLD;
+        } else {
+            return getRangeReadingMM() < Constants.INTAKE_SAMPLE_THRESHOLD;
+        }
     }
 
     /**
@@ -464,9 +458,9 @@ public class ArmSubsystem extends SubsystemBase {
         return wristServo.getPosition();
     }
 
-    public double getIntakePower() {
+    public double getIntakePosition() {
         // The power that the intake is moving with
-        return intakeServo.getPower();
+        return intakeServo.getPosition();
     }
 
     public IntakeState getIntakeState() {
@@ -491,7 +485,7 @@ public class ArmSubsystem extends SubsystemBase {
         return wristServo;
     }
 
-    public CRServo getIntakeServo() {
+    public Servo getIntakeServo() {
         return intakeServo;
     }
 

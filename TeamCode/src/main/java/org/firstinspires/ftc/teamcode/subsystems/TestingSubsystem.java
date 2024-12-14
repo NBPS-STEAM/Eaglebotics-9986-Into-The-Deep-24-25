@@ -85,6 +85,7 @@ public class TestingSubsystem extends SubsystemBase {
         // Get all sensors
         colorRangeSensors = hardwareMap.getAll(ColorRangeSensor.class);
         colorRangeSensors.sort(Comparator.comparing(HardwareDevice::getDeviceName)); // Sort by device name
+        for (ColorRangeSensor sensor : colorRangeSensors) sensor.enableLed(false);
     }
 
     /**

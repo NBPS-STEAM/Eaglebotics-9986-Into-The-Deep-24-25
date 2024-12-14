@@ -50,10 +50,10 @@ public class DriveSubsystem extends SubsystemBase {
         this.backLeftMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BL);
         this.backRightMotor = hardwareMap.get(DcMotor.class, Constants.NAME_DRIVE_BR);
 
-        this.frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
-        this.backLeftMotor.setDirection(DcMotor.Direction.FORWARD);
-        this.frontRightMotor.setDirection(DcMotor.Direction.REVERSE);
-        this.backRightMotor.setDirection(DcMotor.Direction.REVERSE);
+        this.frontLeftMotor.setDirection(Constants.DIRECTION_DRIVE_FL);
+        this.backLeftMotor.setDirection(Constants.DIRECTION_DRIVE_BL);
+        this.frontRightMotor.setDirection(Constants.DIRECTION_DRIVE_FR);
+        this.backRightMotor.setDirection(Constants.DIRECTION_DRIVE_BR);
 
         this.frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         this.backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

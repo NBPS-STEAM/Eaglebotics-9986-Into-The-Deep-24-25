@@ -78,7 +78,7 @@ public class TelemetrySubsystem extends SubsystemBase {
         telemetry.addData("Intake sensor distance (mm)", armSubsystem.getRangeReadingMM());
         telemetry.addData("Intake sensor color", colorToString(armSubsystem.getColorReading()));
         telemetry.addLine();
-        telemetry.addData("Intake servo power", armSubsystem.getIntakePower());
+        telemetry.addData("Intake servo position", armSubsystem.getIntakePosition());
         telemetry.addLine();
         telemetry.addData("Wrist scaled position", armSubsystem.getWristPosition());
         telemetry.addData("Wrist servo position", armSubsystem.getWristPositionUnscaled());

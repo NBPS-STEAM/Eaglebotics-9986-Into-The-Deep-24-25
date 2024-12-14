@@ -41,11 +41,13 @@ public class TestingDcMotor extends TestingDevice {
 
     @Override
     public void changeToMove() {
+        if (!isActive()) return;
         endRunToPosition();
     }
 
     @Override
     public void changeToOffset() {
+        if (!isActive()) return;
         startRunToPosition();
     }
 

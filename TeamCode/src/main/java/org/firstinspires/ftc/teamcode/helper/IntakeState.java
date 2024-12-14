@@ -22,7 +22,8 @@ package org.firstinspires.ftc.teamcode.helper;
  */
 public enum IntakeState {
     NONE,   // No change
-    STOP,   // Stop the intake
-    INTAKE, // Start the intake
-    OUTTAKE,// Start the intake (reverse)
+    PRIMED_SAMPLE,   // Ready to intake a sample
+    PRIMED_SPECIMEN, // Ready to intake a specimen
+    INTAKE, // Close the intake
+    OUTTAKE,// Open the intake
 }
