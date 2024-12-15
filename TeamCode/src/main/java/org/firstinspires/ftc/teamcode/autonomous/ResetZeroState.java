@@ -50,12 +50,18 @@ public class ResetZeroState extends LinearOpMode {
     }
 
     public static void markToNotZeroOnInit() {
-        DriveSubsystem.zeroOnInit = false;
+        markToNotZeroOnInit(false);
+    }
+
+    public static void markToNotZeroOnInit(boolean zeroHeading) {
+        DriveSubsystem.zeroDriveOnInit = false;
+        DriveSubsystem.zeroHeadingOnInit = zeroHeading;
         ArmSubsystem.zeroOnInit = false;
     }
 
     public static void resetZeroState() {
-        DriveSubsystem.zeroOnInit = true;
+        DriveSubsystem.zeroDriveOnInit = true;
+        DriveSubsystem.zeroHeadingOnInit = true;
         ArmSubsystem.zeroOnInit = true;
     }
 

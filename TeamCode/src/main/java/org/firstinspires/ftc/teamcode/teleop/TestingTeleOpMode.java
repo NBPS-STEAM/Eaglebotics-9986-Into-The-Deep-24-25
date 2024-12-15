@@ -121,6 +121,8 @@ public class TestingTeleOpMode extends CommandOpMode {
 
         // Scheduled Commands
         // Scheduled commands run periodically forever or until stopped/interrupted.
+        // ^^ that's probably not right, but I don't have time right now to check
+        // Read here for more info on the different types of commands: https://docs.ftclib.org/ftclib/command-base/command-system/convenience-commands
 
         schedule(new RunCommand(() -> testingSubsystem.moveSelected(gamepad.getLeftY()))); // Move the selected hardware device (set power or position depending on device)
         schedule(new RunCommand(() -> testingSubsystem.offsetSelected(gamepad.getRightY()))); // Offset the selected hardware device (adjust power or position)

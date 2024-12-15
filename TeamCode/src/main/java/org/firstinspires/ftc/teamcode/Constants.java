@@ -84,8 +84,8 @@ public class Constants {
     public static final double    INTAKE_POSITION             = 1.0; // The position of the intake when intaking (closing) on a scale of 0 to 1
     public static final double    OUTTAKE_POSITION            = 0.29; // The position of the intake when outtaking (opening) on a scale of 0 to 1
 
-    public static final double    INTAKE_SAMPLE_THRESHOLD     = 45.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a sample, then it has it.
-    public static final double    INTAKE_SPECIMEN_THRESHOLD   = 65.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a specimen, then it has it.
+    public static final double    INTAKE_SAMPLE_THRESHOLD     = 30.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a sample, then it has it.
+    public static final double    INTAKE_SPECIMEN_THRESHOLD   = 20.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a specimen, then it has it.
 
     public static final double    STICK_COMMAND_THRESHOLD     = 0.8;  // If a controller joystick moves father than this, it can trigger a command.
 

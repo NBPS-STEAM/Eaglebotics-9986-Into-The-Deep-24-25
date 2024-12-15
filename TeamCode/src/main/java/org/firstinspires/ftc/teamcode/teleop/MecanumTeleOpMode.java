@@ -29,8 +29,7 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
-import com.arcrobotics.ftclib.command.CommandOpMode;
-import com.arcrobotics.ftclib.command.RunCommand;
+import com.arcrobotics.ftclib.command.*;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
@@ -102,9 +101,9 @@ import java.util.function.DoubleSupplier;
  * South (A/X) button   |   Move arm to 'stow' set position
  * West (X/□) button    |   Move arm to 'intake' set position
  * East (B/○) button    |   Intelligently cycle intake states
- * North (Y/Δ) button   |   Release arm rotation (so that it does not hold its position)
- * Left bumper          |   Start intake (close claw)
- * Right bumper         |   Start outtake (open claw)
+ * North (Y/Δ) button   |   Do the wibble-wobble (shake the arm rotation for intaking)
+ * Left bumper          |   Start outtake (open claw)
+ * Right bumper         |   Start intake (close claw)
  * Right trigger        |   Move arm to 'intake specimen' set position
  * Left stick up        |   Move arm to 'basket high' set position
  * Left stick down      |   Move arm to 'basket low' set position
@@ -186,20 +185,20 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
         bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
-        bindToButtons(armGamepad, () -> armSubsystem.setRotationPower(0), Button.Y); // Release arm rotation (so that it does not hold its position)
+        bindToButtons(armGamepad, armSubsystem::doTheWibbleWobble, Button.Y); // Do the wibble-wobble (shake the arm rotation for intaking)
 
         bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake specimen")); // Move arm to 'intake specimen' set position
 
         bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high")); // Move arm to 'basket high' set position
         bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low")); // Move arm to 'basket low' set position
-        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen high")); // Move arm to 'specimen high' set position
-        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen low")); // Move arm to 'specimen low' set position
+        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high")); // Move arm to 'specimen high' set position
+        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low")); // Move arm to 'specimen low' set position
 
         //bindToButtons(armGamepad, () -> cyclePositions("hang stage 1", "hang stage 2"), Button.START); // Move arm to 'hang stage 1' set position, then press again to move to 'hang stage 2'
 
         // Intake Controls
-        bindToButtonButNot(armGamepad, armSubsystem::startIntake, Button.LEFT_BUMPER, Button.BACK); // Start intake (close claw)
-        bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.RIGHT_BUMPER, Button.BACK); // Start outtake (open claw)
+        bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.LEFT_BUMPER, Button.BACK); // Start outtake (open claw)
+        bindToButtonButNot(armGamepad, armSubsystem::startIntake, Button.RIGHT_BUMPER, Button.BACK); // Start intake (close claw)
 
         // Zero Arm Motors
         bindToButtons(armGamepad, armSubsystem::zeroExtensionMotor, Button.LEFT_BUMPER, Button.BACK); // Zero (reset) extension motor
@@ -232,14 +231,14 @@ public class MecanumTeleOpMode extends CommandOpMode {
                 .whenInactive(() -> armSubsystem.setRaisePower(0));
 
 
-        // Default Commands
+        // Default/Repeating Commands
 
         // The default command of a subsystem is repeatedly run while no other commands are sent to the subsystem.
         // Since none of the commands above have been associated with a subsystem, these will always run constantly.
 
         driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(baseGamepad), driveSubsystem));
 
-        armSubsystem.setDefaultCommand(new RunCommand(armSubsystem::intakeIfHasSample, armSubsystem));
+        new RepeatCommand(new InstantCommand(armSubsystem::intakeIfHasSample)).schedule(false);
 
         telemetrySubsystem.setDefaultCommand(new RunCommand(telemetrySubsystem::reportTelemetry, telemetrySubsystem));
     }

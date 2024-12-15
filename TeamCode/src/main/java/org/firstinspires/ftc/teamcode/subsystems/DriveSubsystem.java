@@ -4,7 +4,6 @@ import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
@@ -24,7 +23,8 @@ public class DriveSubsystem extends SubsystemBase {
     // Static variables
     // Static variables aren't reset between opmodes, only when the robot turns off.
     // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
-    public static boolean zeroOnInit = true;
+    public static boolean zeroDriveOnInit = true;
+    public static boolean zeroHeadingOnInit = true;
 
     // Private instance variables (private variables that are in an instance of this class)
     private final DcMotor frontLeftMotor; // 'final' means that this variable will never be set again after it is set in the constructor.
@@ -70,7 +70,7 @@ public class DriveSubsystem extends SubsystemBase {
         this.imu.initialize(parameters);
 
         // Zero unless told not to
-        if (zeroOnInit) {
+        if (zeroDriveOnInit) {
             this.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -78,7 +78,12 @@ public class DriveSubsystem extends SubsystemBase {
 
             zeroHeading();
         }
-        zeroOnInit = true;
+        zeroDriveOnInit = true;
+
+        if (zeroHeadingOnInit) {
+            zeroHeading();
+        }
+        zeroHeadingOnInit = true;
 
         frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);

@@ -28,6 +28,7 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
+    private final Command wibbleWobbleCommand;
     private final Command smartIntakeCommand;
     private String lastSetPosition = "";
     private IntakeState intakeState = IntakeState.NONE;
@@ -47,9 +48,11 @@ public class ArmSubsystem extends SubsystemBase {
         namedPositions = new HashMap<>();
         //(NOT UPDATED) addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.INTAKE));
         addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
-        addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
-        addNamedPosition("intake specimen", new ArmPosition(0.22, 2, 0, 1.334, IntakeState.PRIMED_SPECIMEN));
-        addNamedPosition("basket high", new ArmPosition(0.9, 67, 160, 1.625));
+        addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
+        addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
+        addNamedPosition("the wibble wobble 2", new ArmPosition(0.335, 67, 0, 1.64));
+        addNamedPosition("intake specimen", new ArmPosition(0.17, 13+7, 0, 1.3, IntakeState.PRIMED_SPECIMEN));
+        addNamedPosition("basket high", new ArmPosition(0.9, 62+7, 160, 1.625));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
         addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
         addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
@@ -97,7 +100,8 @@ public class ArmSubsystem extends SubsystemBase {
         changeControlModeToRunToPosition(this.raiseMotor, Constants.ARM_RAISE_POWER);
 
         // Prepare smart intake cycle command
-        smartIntakeCommand = generateSmartIntakeCommand();
+        wibbleWobbleCommand = composeWibbleWobbleCommand();
+        smartIntakeCommand = composeSmartIntakeCommand();
     }
 
 
@@ -124,11 +128,24 @@ public class ArmSubsystem extends SubsystemBase {
     // Applying Arm Positions
 
     public void applyNamedPosition(String name) {
-        lastSetPosition = name;
-        applyPosition(getNamedPosition(name));
+        applyNamedPosition(name, true);
     }
 
-    public void applyPosition(ArmPosition position) {
+    /**
+     * Runs regardless of whether a command is scheduled, but if interruptCommand is true, then this will
+     * attempt to interrupt the current command by scheduling an empty instant command.
+     */
+    public void applyNamedPosition(String name, boolean interruptCommand) {
+        lastSetPosition = name;
+        applyPosition(getNamedPosition(name), interruptCommand);
+    }
+
+    /**
+     * Runs regardless of whether a command is scheduled, but if interruptCommand is true, then this will
+     * attempt to interrupt the current command by scheduling an empty instant command.
+     */
+    public void applyPosition(ArmPosition position, boolean interruptCommand) {
+        if (interruptCommand) new InstantCommand(() -> {}, this).schedule(true);
         if (position == null) return; // Skip the rest of this method if an existing position wasn't provided.
         applyRotationPosition(position.getRotationAngle());
         applyExtensionPosition(position.getExtensionPosition());
@@ -205,6 +222,23 @@ public class ArmSubsystem extends SubsystemBase {
         }
     }
 
+    // Special Actions
+
+    public void doTheWibbleWobble() {
+        wibbleWobbleCommand.schedule(true);
+    }
+
+    private Command composeWibbleWobbleCommand() {
+        CommandBase command = new RepeatCommand(new SequentialCommandGroup(
+                new InstantCommand(() -> applyNamedPosition("the wibble wobble 1", false)),
+                new WaitCommand(250),
+                new InstantCommand(() -> applyNamedPosition("the wibble wobble 2", false)),
+                new WaitCommand(250)
+        ));
+        command.addRequirements(this);
+        return command;
+    }
+
     // Controlling the Intake
 
     public void startIntake() {
@@ -244,13 +278,13 @@ public class ArmSubsystem extends SubsystemBase {
         smartIntakeCommand.schedule(false);
     }
 
-    private Command generateSmartIntakeCommand() {
+    private Command composeSmartIntakeCommand() {
         // wowza
         ArmSubsystem subsystem = this;
         CommandBase primeCommand = new SequentialCommandGroup(
                 new InstantCommand(subsystem::startIntake),
                 new WaitCommand(500),
-                new InstantCommand(() -> subsystem.applyNamedPosition("stow"))
+                new InstantCommand(() -> subsystem.applyNamedPosition("stow", false))
         );
         CommandBase finalCommand = new SelectCommand(
                 new HashMap<Object, Command>() {{

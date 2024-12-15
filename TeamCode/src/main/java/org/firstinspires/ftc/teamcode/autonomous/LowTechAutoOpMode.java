@@ -34,18 +34,12 @@ import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
 import com.arcrobotics.ftclib.command.SequentialCommandGroup;
 import com.arcrobotics.ftclib.command.WaitCommand;
-import com.arcrobotics.ftclib.command.button.Trigger;
-import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
-
-import java.util.function.DoubleSupplier;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -76,8 +70,8 @@ import java.util.function.DoubleSupplier;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
-@Autonomous(name="Autonomous OpMode", group="Autonomous OpMode")
-public class AutonomousOpMode extends CommandOpMode {
+@Autonomous(name="Low-Tech Auto-OpMode", group="Autonomous OpMode")
+public class LowTechAutoOpMode extends CommandOpMode {
 
     // Hardware Variables
     private DriveSubsystem driveSubsystem;
@@ -109,7 +103,9 @@ public class AutonomousOpMode extends CommandOpMode {
                 //new InstantCommand(() -> armSubsystem.applyNamedPosition("stow")),
                 //new WaitCommand(2000),
                 driveForTime(2000, 0, -1, 0),
-                driveForTime(500, 1, 0, 0),
+                driveForTime(1000, 0, 1, 0),
+                driveForTime(2000, 1, 0, 0),
+                driveForTime(1500, 0, 1, 0),
                 new InstantCommand(armSubsystem::moveMotorsToZero)
         );
 
