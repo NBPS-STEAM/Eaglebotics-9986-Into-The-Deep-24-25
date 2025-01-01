@@ -66,6 +66,7 @@ public class TelemetrySubsystem extends SubsystemBase {
         QuadMotorValues<Double> drivePositions = driveSubsystem.getMotorPositions();
         QuadMotorValues<Integer> drivePositionsUnscaled = driveSubsystem.getMotorPositionsUnscaled();
         QuadMotorValues<Double> drivePowers = driveSubsystem.getMotorPowers();
+        NormalizedRGBA[] sensorColors = armSubsystem.getColorReadings();
 
         // Clear old info from the Driver Station
         telemetry.clear();
@@ -76,7 +77,9 @@ public class TelemetrySubsystem extends SubsystemBase {
         telemetry.addData("IMU heading direction (degrees)", driveSubsystem.getHeading(AngleUnit.DEGREES));
         telemetry.addLine();
         telemetry.addData("Intake sensor distance (mm)", armSubsystem.getRangeReadingMM());
-        telemetry.addData("Intake sensor color", colorToString(armSubsystem.getColorReading()));
+        for (int i = 1; i <= sensorColors.length; i++) {
+            telemetry.addData("Intake sensor " + i + " color", colorToString(sensorColors[i]));
+        }
         telemetry.addLine();
         telemetry.addData("Intake servo position", armSubsystem.getIntakePosition());
         telemetry.addLine();

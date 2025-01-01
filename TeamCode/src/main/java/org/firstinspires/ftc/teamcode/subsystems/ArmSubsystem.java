@@ -39,7 +39,7 @@ public class ArmSubsystem extends SubsystemBase {
     private final DcMotor raiseMotor;
     private final Servo wristServo;
     private final Servo intakeServo;
-    private final ColorRangeSensor colorRangeSensor;
+    private final ColorRangeSensor[] colorRangeSensors;
 
 
     // Constructor/initialization method
@@ -68,7 +68,13 @@ public class ArmSubsystem extends SubsystemBase {
         this.raiseMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RAISE);
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
         this.intakeServo = hardwareMap.get(Servo.class, Constants.NAME_INTAKE);
-        this.colorRangeSensor = hardwareMap.get(ColorRangeSensor.class, Constants.NAME_ARM_COLOR_RANGE);
+
+        this.colorRangeSensors = new ColorRangeSensor[Constants.NAMES_ARM_COLOR_RANGE.length];
+        for (int i = 0; i < this.colorRangeSensors.length; i++) {
+            this.colorRangeSensors[i] = hardwareMap.get(ColorRangeSensor.class, Constants.NAMES_ARM_COLOR_RANGE[i]);
+            // initialize color range sensors here:
+            this.colorRangeSensors[i].enableLed(false);
+        }
 
 
         // Configure hardware
@@ -84,8 +90,6 @@ public class ArmSubsystem extends SubsystemBase {
         this.wristServo.setDirection(Constants.DIRECTION_ARM_WRIST);
 
         this.intakeServo.setDirection(Constants.DIRECTION_INTAKE);
-
-        this.colorRangeSensor.enableLed(false);
 
         // Zero unless told not to
         if (zeroOnInit) {
@@ -374,11 +378,15 @@ public class ArmSubsystem extends SubsystemBase {
     // Color/Range Sensor
 
     /**
-     * Gets the color reading of the color/range sensor as a {@link NormalizedRGBA}, which is an
+     * Gets the color reading of each color/range sensor as a {@link NormalizedRGBA}, which is an
      * object that stores an RGBA color value in a convenient form.
      */
-    public NormalizedRGBA getColorReading() {
-        return colorRangeSensor.getNormalizedColors();
+    public NormalizedRGBA[] getColorReadings() {
+        NormalizedRGBA[] arr = new NormalizedRGBA[colorRangeSensors.length];
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = colorRangeSensors[i].getNormalizedColors();
+        }
+        return arr;
     }
 
     /**
@@ -394,14 +402,22 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     /**
-     * @return The distance reading of the color/range sensor IN MILLIMETERS
+     * @return The distance reading of the CLOSEST color/range sensor IN MILLIMETERS
      */
     public double getRangeReadingMM() {
         return getRangeReading(DistanceUnit.MM);
     }
 
+    /**
+     * @param unit  The unit of measurement of the reading
+     * @see #getRangeReadingMM()
+     */
     public double getRangeReading(DistanceUnit unit) {
-        return colorRangeSensor.getDistance(unit);
+        double min = DistanceUnit.infinity;
+        for (ColorRangeSensor sensor : colorRangeSensors) {
+            min = Math.min(min, sensor.getDistance(unit));
+        }
+        return min;
     }
 
 
@@ -523,7 +539,7 @@ public class ArmSubsystem extends SubsystemBase {
         return intakeServo;
     }
 
-    public ColorRangeSensor getColorRangeSensor() {
-        return colorRangeSensor;
+    public ColorRangeSensor[] getColorRangeSensors() {
+        return colorRangeSensors;
     }
 }

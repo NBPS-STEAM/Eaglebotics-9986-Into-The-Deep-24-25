@@ -32,7 +32,7 @@ public class Constants {
     public static final String  NAME_ARM_EXTEND = "extensionMotor";
     public static final String  NAME_ARM_RAISE = "raiseMotor";
     public static final String  NAME_ARM_WRIST = "wristServo";
-    public static final String  NAME_ARM_COLOR_RANGE = "colorRangeSensor";
+    public static final String[] NAMES_ARM_COLOR_RANGE = new String[]{"colorRangeSensor"};
 
     public static final String  NAME_IMU = "imu";
 
