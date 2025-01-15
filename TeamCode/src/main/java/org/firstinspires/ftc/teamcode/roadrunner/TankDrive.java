@@ -46,6 +46,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.roadrunner.messages.TankCommandMessage;
@@ -63,10 +64,8 @@ public final class TankDrive {
         // IMU orientation
         // TODO: fill in these values based on
         //   see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting
-        public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
-        public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
+        public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection = Constants.IMU_HUB_LOGO_DIRECTION;
+        public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection = Constants.IMU_HUB_USB_DIRECTION;
 
         // drive model parameters
         public double inPerTick = 0;
@@ -152,7 +151,10 @@ public final class TankDrive {
             }
 
             // TODO: reverse encoder directions if needed
-            //   leftEncs.get(0).setDirection(DcMotorSimple.Direction.REVERSE);
+            leftEncs.get(0).setDirection(Constants.DIRECTION_DRIVE_FL);
+            leftEncs.get(1).setDirection(Constants.DIRECTION_DRIVE_BL);
+            rightEncs.get(0).setDirection(Constants.DIRECTION_DRIVE_FR);
+            rightEncs.get(1).setDirection(Constants.DIRECTION_DRIVE_BR);
         }
 
         @Override
@@ -223,8 +225,8 @@ public final class TankDrive {
         // TODO: make sure your config has motors with these names (or change them)
         //   add additional motors on each side if you have them
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
-        leftMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, "left"));
-        rightMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, "right"));
+        leftMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, Constants.NAME_DRIVE_FL), hardwareMap.get(DcMotorEx.class, Constants.NAME_DRIVE_BL));
+        rightMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, Constants.NAME_DRIVE_FR), hardwareMap.get(DcMotorEx.class, Constants.NAME_DRIVE_BR));
 
         for (DcMotorEx m : leftMotors) {
             m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -234,11 +236,14 @@ public final class TankDrive {
         }
 
         // TODO: reverse motor directions if needed
-        //   leftMotors.get(0).setDirection(DcMotorSimple.Direction.REVERSE);
+        leftMotors.get(0).setDirection(Constants.DIRECTION_DRIVE_FL);
+        leftMotors.get(1).setDirection(Constants.DIRECTION_DRIVE_BL);
+        rightMotors.get(0).setDirection(Constants.DIRECTION_DRIVE_FR);
+        rightMotors.get(1).setDirection(Constants.DIRECTION_DRIVE_BR);
 
         // TODO: make sure your config has an IMU with this name (can be BNO or BHI)
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
-        lazyImu = new LazyImu(hardwareMap, "imu", new RevHubOrientationOnRobot(
+        lazyImu = new LazyImu(hardwareMap, Constants.NAME_IMU, new RevHubOrientationOnRobot(
                 PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();

@@ -76,6 +76,10 @@ public class Constants {
     public static final double    ARM_EXTENSION_POWER         = 0.6; // The amount of power that the arm extends/retracts with
     public static final double    ARM_RAISE_POWER             = 0.6; // The amount of power that the arm rises/lowers with
 
+    public static final double    ARM_ROTATION_POWER_AUTO     = 0.3; // The amount of power that the arm rotates with in the autonomous routine
+    public static final double    ARM_EXTENSION_POWER_AUTO    = 0.3; // The amount of power that the arm extends/retracts with in the autonomous routine
+    public static final double    ARM_RAISE_POWER_AUTO        = 0.6; // The amount of power that the arm rises/lowers with in the autonomous routine
+
     public static final double    ARM_ROTATION_POWER_MANUAL   = 0.5; // The amount of power that the arm rotates with (MANUAL CONTROL)
     public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // The amount of power that the arm extends/retracts with (MANUAL CONTROL)
     public static final double    ARM_RAISE_POWER_MANUAL      = 0.5; // The amount of power that the arm rises/lowers with (MANUAL CONTROL)

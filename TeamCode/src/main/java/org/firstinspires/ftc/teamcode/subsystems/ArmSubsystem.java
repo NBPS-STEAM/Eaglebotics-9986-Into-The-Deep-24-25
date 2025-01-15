@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.Action;
 import com.arcrobotics.ftclib.command.*;
 import com.qualcomm.robotcore.hardware.ColorRangeSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -12,6 +14,7 @@ import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 
@@ -25,6 +28,11 @@ public class ArmSubsystem extends SubsystemBase {
     // Static variables aren't reset between opmodes, only when the robot turns off.
     // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
     public static boolean zeroOnInit = true;
+
+    // Default motor power
+    private final double rotationPower;
+    private final double extensionPower;
+    private final double raisePower;
 
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
@@ -44,6 +52,9 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Constructor/initialization method
     public ArmSubsystem(HardwareMap hardwareMap) {
+        this(hardwareMap, Constants.ARM_ROTATION_POWER, Constants.ARM_EXTENSION_POWER, Constants.ARM_RAISE_POWER);
+    }
+    public ArmSubsystem(HardwareMap hardwareMap, double rotationPower, double extensionPower, double raisePower) {
         // Add all named arm positions
         namedPositions = new HashMap<>();
         //(NOT UPDATED) addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.INTAKE));
@@ -78,6 +89,10 @@ public class ArmSubsystem extends SubsystemBase {
 
 
         // Configure hardware
+        this.rotationPower = rotationPower;
+        this.extensionPower = extensionPower;
+        this.raisePower = raisePower;
+
         this.rotationMotor.setDirection(Constants.DIRECTION_ARM_ROTATE);
         this.rotationMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -99,9 +114,9 @@ public class ArmSubsystem extends SubsystemBase {
         }
         zeroOnInit = true;
 
-        changeControlModeToRunToPosition(this.rotationMotor, Constants.ARM_ROTATION_POWER);
-        changeControlModeToRunToPosition(this.extensionMotor, Constants.ARM_EXTENSION_POWER);
-        changeControlModeToRunToPosition(this.raiseMotor, Constants.ARM_RAISE_POWER);
+        changeControlModeToRunToPosition(this.rotationMotor, rotationPower);
+        changeControlModeToRunToPosition(this.extensionMotor, extensionPower);
+        changeControlModeToRunToPosition(this.raiseMotor, raisePower);
 
         // Prepare smart intake cycle command
         wibbleWobbleCommand = composeWibbleWobbleCommand();
@@ -171,7 +186,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyRotationPositionUnscaled(int encoder) {
-        checkControlModeRunToPosition(rotationMotor, Constants.ARM_ROTATION_POWER);
+        checkControlModeRunToPosition(rotationMotor, rotationPower);
         rotationMotor.setTargetPosition(encoder);
     }
 
@@ -181,7 +196,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyExtensionPositionUnscaled(int encoder) {
-        checkControlModeRunToPosition(extensionMotor, Constants.ARM_EXTENSION_POWER);
+        checkControlModeRunToPosition(extensionMotor, extensionPower);
         extensionMotor.setTargetPosition(encoder);
     }
 
@@ -191,7 +206,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyRaisePositionUnscaled(int encoder) {
-        checkControlModeRunToPosition(raiseMotor, Constants.ARM_RAISE_POWER);
+        checkControlModeRunToPosition(raiseMotor, raisePower);
         raiseMotor.setTargetPosition(encoder);
     }
 
@@ -314,21 +329,21 @@ public class ArmSubsystem extends SubsystemBase {
         this.rotationMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         this.rotationMotor.setTargetPosition(0);
         this.rotationMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        this.rotationMotor.setPower(Constants.ARM_ROTATION_POWER);
+        this.rotationMotor.setPower(rotationPower);
     }
 
     public void zeroExtensionMotor() {
         this.extensionMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         this.extensionMotor.setTargetPosition(0);
         this.extensionMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        this.extensionMotor.setPower(Constants.ARM_EXTENSION_POWER);
+        this.extensionMotor.setPower(extensionPower);
     }
 
     public void zeroRaiseMotor() {
         this.raiseMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         this.raiseMotor.setTargetPosition(0);
         this.raiseMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        this.raiseMotor.setPower(Constants.ARM_RAISE_POWER);
+        this.raiseMotor.setPower(raisePower);
     }
 
     // Moving Motors Without Encoders
@@ -541,5 +556,65 @@ public class ArmSubsystem extends SubsystemBase {
 
     public ColorRangeSensor[] getColorRangeSensors() {
         return colorRangeSensors;
+    }
+
+
+    // Road Runner Actions
+    // For more info:
+    // https://rr.brott.dev/docs/v1-0/guides/centerstage-auto/
+    // https://rr.brott.dev/docs/v1-0/actions/
+
+    /**
+     * Wraps {@link #applyIntakeState(IntakeState)} as a Road Runner Action.
+     * Used exclusively for Road Runner autonomous routines.
+     */
+    public Action applyIntakeStateRR(IntakeState state) {
+        return new ApplyIntakeStateAction(state);
+    }
+
+    public class ApplyIntakeStateAction implements Action {
+        private final IntakeState state;
+
+        public ApplyIntakeStateAction(IntakeState state) {
+            this.state = state;
+        }
+
+        @Override
+        public boolean run(@NotNull TelemetryPacket packet) {
+            applyIntakeState(state);
+            return false; // If true, this action will run again
+        }
+    }
+
+    /**
+     * Wraps {@link #applyNamedPosition(String)} as a Road Runner Action.
+     * Used exclusively for Road Runner autonomous routines.
+     */
+    public Action applyNamedPositionRR(String name) {
+        return new ApplyNamedPositionAction(name, null);
+    }
+    /**
+     * Wraps {@link #applyNamedPosition(String, boolean)} as a Road Runner Action.
+     * Used exclusively for Road Runner autonomous routines.
+     */
+    public Action applyNamedPositionRR(String name, boolean interruptCommand) {
+        return new ApplyNamedPositionAction(name, interruptCommand);
+    }
+
+    public class ApplyNamedPositionAction implements Action {
+        private final String name;
+        private final Boolean interruptCommand;
+
+        public ApplyNamedPositionAction(String name, Boolean interruptCommand) {
+            this.name = name;
+            this.interruptCommand = interruptCommand;
+        }
+
+        @Override
+        public boolean run(@NotNull TelemetryPacket packet) {
+            if (interruptCommand == null) applyNamedPosition(name);
+            else applyNamedPosition(name, interruptCommand);
+            return false; // If true, this action will run again
+        }
     }
 }

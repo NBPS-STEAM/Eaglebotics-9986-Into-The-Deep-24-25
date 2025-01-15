@@ -29,12 +29,22 @@
 
 package org.firstinspires.ftc.teamcode.autonomous;
 
+import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.*;
+import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.command.*;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
+import org.jetbrains.annotations.NotNull;
+
+import java.lang.Math;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -44,11 +54,12 @@ import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
  * Hardware names are listed in the Constants file. You must correctly set all hardware names for each
  * motor/servo/etc. in the Driver Station for the code to find your devices.
  *
- * This code goes from the starting position (third tile, ~60 in from the net zone facing the net zone),
- * scores a preloaded in the low net, and then goes to park.
+ * This code goes from the starting position (second tile, ~40 in. from the left wall and facing away from the back wall),
+ * scores a preload in the high net, collects and scores a few spike mark samples in the high net,
+ * and then goes to park in the ascent zone.
  *
  * Before starting this OpMode, the arm lift must be in its lowest position and the extension fully
- * retracted. The robot should also be facing forward, or else the field-centric driving will be off until reset.
+ * retracted. The robot must also be facing forward.
  *
  * See MecanumTeleOpMode for more basic info.
  *
@@ -65,59 +76,78 @@ import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
+@Config
 @Autonomous(name="Road Runner Auto-OpMode", group="Autonomous OpMode")
-public class RoadRunnerAutoOpMode extends CommandOpMode {
+public class RoadRunnerAutoOpMode extends LinearOpMode {
 
     // Hardware Variables
-    private DriveSubsystem driveSubsystem;
+    private MecanumDrive drive;
     private ArmSubsystem armSubsystem;
-    private TelemetrySubsystem telemetrySubsystem;
 
 
     // This is run when the "INIT" button is pressed on the Driver Station.
     @Override
-    public void initialize() {
+    public void runOpMode() {
+        // Initialize MecanumDrive at a particular pose
+        Pose2d initialPose = new Pose2d(0, 36, 0);
+        drive = new MecanumDrive(hardwareMap, initialPose);
         // Initialize hardware
-        driveSubsystem = new DriveSubsystem(hardwareMap, Constants.DRIVE_POWER_MULTIPLIER_MED);
-        armSubsystem = new ArmSubsystem(hardwareMap);
-        telemetrySubsystem = new TelemetrySubsystem(this, driveSubsystem, armSubsystem);
+        armSubsystem = new ArmSubsystem(hardwareMap, Constants.ARM_ROTATION_POWER_AUTO, Constants.ARM_EXTENSION_POWER_AUTO, Constants.ARM_RAISE_POWER_AUTO);
 
         // Mark subsystems to not zero again once the next opmode begins (teleop)
         ResetZeroState.markToNotZeroOnInit(true);
 
+        // Generate paths
+        Action path = drive.actionBuilder(initialPose)
+                // Score preload
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("basket high"))
+                .strafeTo(new Vector2d(8, 52))
+                .turnTo(Math.PI * 3 / 4)
+                .waitSeconds(2)
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
+                .waitSeconds(1)
+                // Score center spike mark sample
+                .turnTo(0)
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("intake specimen"))
+                .strafeTo(new Vector2d(16, 60))
+                .strafeTo(new Vector2d(24, 60))
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
+                .waitSeconds(1)
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("basket high"))
+                .strafeTo(new Vector2d(8, 52))
+                .turnTo(Math.PI * 3 / 4)
+                .waitSeconds(2)
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
+                .waitSeconds(1)
+                // Score right spike mark sample
+                .turnTo(0)
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("intake specimen"))
+                .strafeTo(new Vector2d(16, 48))
+                .strafeTo(new Vector2d(24, 48))
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
+                .waitSeconds(1)
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("basket high"))
+                .strafeTo(new Vector2d(8, 52))
+                .turnTo(Math.PI * 3 / 4)
+                .waitSeconds(2)
+                .stopAndAdd(() -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
+                .waitSeconds(1)
+                // Park in ascent zone
+                //.turnTo(0)
+                .stopAndAdd(() -> armSubsystem.applyNamedPosition("stow"))
+                .strafeTo(new Vector2d(60, 48))
+                .strafeTo(new Vector2d(60, 30))
+                .build();
 
         // Schedule autonomous sequence
-        SequentialCommandGroup routine = new SequentialCommandGroup(
-                new WaitCommand(1000),
-                //new InstantCommand(() -> armSubsystem.applyNamedPosition("intake stage 1")),
-                //new WaitCommand(2000),
-                //driveForTime(500, 0, 1, 0),
-                driveForTime(500, -1, 0, 0),
-                //new InstantCommand(armSubsystem::startOuttake),
-                //new WaitCommand(2000),
-                //new InstantCommand(() -> armSubsystem.applyNamedPosition("stow")),
-                //new WaitCommand(2000),
-                driveForTime(2000, 0, -1, 0),
-                driveForTime(500, 1, 0, 0),
-                new InstantCommand(armSubsystem::moveMotorsToZero)
-        );
-
-        schedule(routine);
 
 
-        // Default Commands
+        // Wait until start
+        waitForStart();
+        if (isStopRequested()) return;
 
-        telemetrySubsystem.setDefaultCommand(new RunCommand(telemetrySubsystem::reportTelemetry, telemetrySubsystem));
-    }
-
-    // Helper Methods
-
-    private SequentialCommandGroup driveForTime(long millis, double axial, double lateral, double yaw) {
-        return new SequentialCommandGroup(
-                new InstantCommand(() -> driveSubsystem.drive(axial, lateral, yaw)),
-                new WaitCommand(millis),
-                new InstantCommand(() -> driveSubsystem.drive(0, 0, 0)),
-                new WaitCommand(500)
-        );
+        // Execute autonomous routine
+        Actions.runBlocking(path);
     }
 }
