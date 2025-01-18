@@ -77,8 +77,8 @@ public class TelemetrySubsystem extends SubsystemBase {
         telemetry.addData("IMU heading direction (degrees)", driveSubsystem.getHeading(AngleUnit.DEGREES));
         telemetry.addLine();
         telemetry.addData("Intake sensor distance (mm)", armSubsystem.getRangeReadingMM());
-        for (int i = 1; i <= sensorColors.length; i++) {
-            telemetry.addData("Intake sensor " + i + " color", colorToString(sensorColors[i]));
+        for (int i = 0; i < sensorColors.length; i++) {
+            telemetry.addData("Intake sensor " + (i + 1) + " color", colorToString(sensorColors[i]));
         }
         telemetry.addLine();
         telemetry.addData("Intake servo position", armSubsystem.getIntakePosition());

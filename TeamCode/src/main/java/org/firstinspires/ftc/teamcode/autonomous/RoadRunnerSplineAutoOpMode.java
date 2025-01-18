@@ -30,21 +30,16 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.acmerobotics.roadrunner.*;
+import com.acmerobotics.roadrunner.Action;
+import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
-import com.arcrobotics.ftclib.command.*;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
-import org.jetbrains.annotations.NotNull;
-
-import java.lang.Math;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -57,6 +52,8 @@ import java.lang.Math;
  * This code goes from the starting position (second tile, ~40 in. from the left wall and facing away from the back wall),
  * scores a preload in the high net, collects and scores a few spike mark samples in the high net,
  * and then goes to park in the ascent zone.
+ *
+ * This version of the opmode makes use of splines, which allows the robot to turn while strafing. Splines are slightly risky.
  *
  * Before starting this OpMode, the arm lift must be in its lowest position and the extension fully
  * retracted. The robot must also be facing forward.
@@ -77,8 +74,8 @@ import java.lang.Math;
  */
 
 @Config
-@Autonomous(name="Road Runner Auto-OpMode", group="Autonomous OpMode")
-public class RoadRunnerAutoOpMode extends LinearOpMode {
+@Autonomous(name="Road Runner + Splines Auto-OpMode", group="Autonomous OpMode")
+public class RoadRunnerSplineAutoOpMode extends LinearOpMode {
 
     // Constants (for only this routine)
     private static final Vector2d BASKET_POS = new Vector2d(10, 64);
@@ -105,44 +102,38 @@ public class RoadRunnerAutoOpMode extends LinearOpMode {
                 .strafeTo(BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
-                .waitSeconds(0.4)
+                .waitSeconds(0.2)
 
                 // Score right spike mark sample
-                .turnTo(0)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
-                .strafeTo(new Vector2d(16, 54))
+                .afterTime(0.3, () -> armSubsystem.applyNamedPosition("intake ground"))
+                .splineTo(new Vector2d(16, 54), 0.0)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .strafeTo(new Vector2d(24, 54))
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .waitSeconds(0.5)
+                .waitSeconds(0.3)
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
                 .strafeTo(BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
-                .waitSeconds(0.4)
+                .waitSeconds(0.2)
 
                 // Score center spike mark sample
-                .turnTo(0)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
-                .strafeTo(new Vector2d(16, 66))
+                .afterTime(0.3, () -> armSubsystem.applyNamedPosition("intake ground"))
+                .splineTo(new Vector2d(16, 66), 0.0)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .strafeTo(new Vector2d(24, 66))
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .waitSeconds(0.5)
+                .waitSeconds(0.3)
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
                 .strafeTo(BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
-                .waitSeconds(0.4)
+                .waitSeconds(0.2)
 
                 // Park in ascent zone
-                //.turnTo(0)
                 .afterTime(0.5, () -> armSubsystem.applyNamedPosition("stow"))
                 .strafeTo(new Vector2d(68, 48))
                 .strafeTo(new Vector2d(68, 38))

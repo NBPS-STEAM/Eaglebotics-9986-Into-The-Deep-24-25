@@ -104,7 +104,7 @@ import java.util.function.DoubleSupplier;
  * North (Y/Δ) button   |   Do the wibble-wobble (shake the arm rotation for intaking)
  * Left bumper          |   Start outtake (open claw)
  * Right bumper         |   Start intake (close claw)
- * Right trigger        |   Move arm to 'intake specimen' set position
+ * Right trigger        |   Move arm to 'intake ground' set position
  * Left stick up        |   Move arm to 'basket high' set position
  * Left stick down      |   Move arm to 'basket low' set position
  * Right stick up       |   Move arm to 'specimen high' set position
@@ -187,7 +187,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
         bindToButtons(armGamepad, armSubsystem::doTheWibbleWobble, Button.Y); // Do the wibble-wobble (shake the arm rotation for intaking)
 
-        bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake specimen")); // Move arm to 'intake specimen' set position
+        bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake ground")); // Move arm to 'intake ground' set position
 
         bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high")); // Move arm to 'basket high' set position
         bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low")); // Move arm to 'basket low' set position

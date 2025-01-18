@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.firstinspires.ftc.teamcode.helper.NullColorRangeSensor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -62,8 +63,8 @@ public class ArmSubsystem extends SubsystemBase {
         addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
         addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
         addNamedPosition("the wibble wobble 2", new ArmPosition(0.335, 67, 0, 1.64));
-        addNamedPosition("intake specimen", new ArmPosition(0.17, 13+7, 0, 1.3, IntakeState.PRIMED_SPECIMEN));
-        addNamedPosition("basket high", new ArmPosition(0.9, 62+7, 160, 1.625));
+        addNamedPosition("intake ground", new ArmPosition(0.17, 19, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
+        addNamedPosition("basket high", new ArmPosition(0.85, 62+6, 160, 1.625));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
         addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
         addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
@@ -82,7 +83,8 @@ public class ArmSubsystem extends SubsystemBase {
 
         this.colorRangeSensors = new ColorRangeSensor[Constants.NAMES_ARM_COLOR_RANGE.length];
         for (int i = 0; i < this.colorRangeSensors.length; i++) {
-            this.colorRangeSensors[i] = hardwareMap.get(ColorRangeSensor.class, Constants.NAMES_ARM_COLOR_RANGE[i]);
+            this.colorRangeSensors[i] = hardwareMap.tryGet(ColorRangeSensor.class, Constants.NAMES_ARM_COLOR_RANGE[i]);
+            if (this.colorRangeSensors[i] == null) this.colorRangeSensors[i] = new NullColorRangeSensor();
             // initialize color range sensors here:
             this.colorRangeSensors[i].enableLed(false);
         }
@@ -565,56 +567,22 @@ public class ArmSubsystem extends SubsystemBase {
     // https://rr.brott.dev/docs/v1-0/actions/
 
     /**
-     * Wraps {@link #applyIntakeState(IntakeState)} as a Road Runner Action.
-     * Used exclusively for Road Runner autonomous routines.
+     * @see YieldForRaiseTarget
      */
-    public Action applyIntakeStateRR(IntakeState state) {
-        return new ApplyIntakeStateAction(state);
-    }
-
-    public class ApplyIntakeStateAction implements Action {
-        private final IntakeState state;
-
-        public ApplyIntakeStateAction(IntakeState state) {
-            this.state = state;
-        }
-
-        @Override
-        public boolean run(@NotNull TelemetryPacket packet) {
-            applyIntakeState(state);
-            return false; // If true, this action will run again
-        }
+    public Action YieldForRaiseTarget() {
+        return new YieldForRaiseTarget();
     }
 
     /**
-     * Wraps {@link #applyNamedPosition(String)} as a Road Runner Action.
+     * Generates a Road Runner Action that yields until the raise has reached its target position
+     * for the last applied named state.
+     * If no named states have been applied yet, this ends immediately.
      * Used exclusively for Road Runner autonomous routines.
      */
-    public Action applyNamedPositionRR(String name) {
-        return new ApplyNamedPositionAction(name, null);
-    }
-    /**
-     * Wraps {@link #applyNamedPosition(String, boolean)} as a Road Runner Action.
-     * Used exclusively for Road Runner autonomous routines.
-     */
-    public Action applyNamedPositionRR(String name, boolean interruptCommand) {
-        return new ApplyNamedPositionAction(name, interruptCommand);
-    }
-
-    public class ApplyNamedPositionAction implements Action {
-        private final String name;
-        private final Boolean interruptCommand;
-
-        public ApplyNamedPositionAction(String name, Boolean interruptCommand) {
-            this.name = name;
-            this.interruptCommand = interruptCommand;
-        }
-
+    public class YieldForRaiseTarget implements Action {
         @Override
         public boolean run(@NotNull TelemetryPacket packet) {
-            if (interruptCommand == null) applyNamedPosition(name);
-            else applyNamedPosition(name, interruptCommand);
-            return false; // If true, this action will run again
+            return Math.abs(getRaiseMotor().getCurrentPosition() - getRaiseMotor().getTargetPosition()) > Constants.RAISE_TARGET_THRESHOLD; // If true, this action will run again
         }
     }
 }
