@@ -41,6 +41,7 @@ public class ArmSubsystem extends SubsystemBase {
     private final Command smartIntakeCommand;
     private String lastSetPosition = "";
     private IntakeState intakeState = IntakeState.NONE;
+    private boolean isSetPositionLocked = false;
 
     // Hardware variables
     private final DcMotor rotationMotor;
@@ -57,14 +58,15 @@ public class ArmSubsystem extends SubsystemBase {
     }
     public ArmSubsystem(HardwareMap hardwareMap, double rotationPower, double extensionPower, double raisePower) {
         // Add all named arm positions
+        // TODO: rename wibble wobble 2, remove wibble wobble 1, remove wibble wobble commands
         namedPositions = new HashMap<>();
         //(NOT UPDATED) addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.INTAKE));
         addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
         addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
         addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
-        addNamedPosition("the wibble wobble 2", new ArmPosition(0.335, 67, 0, 1.64));
-        addNamedPosition("intake ground", new ArmPosition(0.17, 19, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
-        addNamedPosition("basket high", new ArmPosition(0.85, 62+6, 160, 1.625));
+        addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
+        addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
+        addNamedPosition("basket high", new ArmPosition(0.9, 62+6, 160, 1.625));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
         addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
         addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
@@ -130,6 +132,10 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Managing Named Arm Positions
 
+    public void lockSetPosition(boolean locked) {
+        isSetPositionLocked = locked;
+    }
+
     public void addNamedPosition(String name, ArmPosition position) {
         namedPositions.put(name, position);
     }
@@ -152,21 +158,27 @@ public class ArmSubsystem extends SubsystemBase {
         applyNamedPosition(name, true);
     }
 
-    /**
-     * Runs regardless of whether a command is scheduled, but if interruptCommand is true, then this will
-     * attempt to interrupt the current command by scheduling an empty instant command.
-     */
     public void applyNamedPosition(String name, boolean interruptCommand) {
-        lastSetPosition = name;
-        applyPosition(getNamedPosition(name), interruptCommand);
+        applyNamedPosition(name, interruptCommand, false);
     }
 
     /**
      * Runs regardless of whether a command is scheduled, but if interruptCommand is true, then this will
      * attempt to interrupt the current command by scheduling an empty instant command.
      */
-    public void applyPosition(ArmPosition position, boolean interruptCommand) {
-        if (interruptCommand) new InstantCommand(() -> {}, this).schedule(true);
+    public void applyNamedPosition(String name, boolean interruptCommand, boolean lockSetPosition) {
+        lastSetPosition = name;
+        applyPosition(getNamedPosition(name), interruptCommand, lockSetPosition);
+    }
+
+    /**
+     * Runs regardless of whether a command is scheduled, but if interruptCommand is true, then this will
+     * attempt to interrupt the current command by scheduling an empty instant command.
+     */
+    public void applyPosition(ArmPosition position, boolean interruptCommand, boolean lockSetPosition) {
+        if (isSetPositionLocked) return;
+        lockSetPosition(lockSetPosition);
+        //if (interruptCommand) new InstantCommand(() -> {}, this).schedule(true);
         if (position == null) return; // Skip the rest of this method if an existing position wasn't provided.
         applyRotationPosition(position.getRotationAngle());
         applyExtensionPosition(position.getExtensionPosition());

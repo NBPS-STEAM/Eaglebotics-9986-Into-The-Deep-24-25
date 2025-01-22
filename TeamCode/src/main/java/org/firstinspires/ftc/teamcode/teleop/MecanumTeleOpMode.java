@@ -101,14 +101,15 @@ import java.util.function.DoubleSupplier;
  * South (A/X) button   |   Move arm to 'stow' set position
  * West (X/□) button    |   Move arm to 'intake' set position
  * East (B/○) button    |   Intelligently cycle intake states
- * North (Y/Δ) button   |   Do the wibble-wobble (shake the arm rotation for intaking)
+ * North (Y/Δ) button   |   Move arm to 'the wibble wobble 2' set position
  * Left bumper          |   Start outtake (open claw)
  * Right bumper         |   Start intake (close claw)
+ * Left trigger         |   Unlock arm subsystem (set positions cannot be applied while locked)
  * Right trigger        |   Move arm to 'intake ground' set position
- * Left stick up        |   Move arm to 'basket high' set position
- * Left stick down      |   Move arm to 'basket low' set position
- * Right stick up       |   Move arm to 'specimen high' set position
- * Right stick down     |   Move arm to 'specimen low' set position
+ * Left stick up        |   Move arm to 'basket high' set position (locks arm subsystem)
+ * Left stick down      |   Move arm to 'basket low' set position (locks arm subsystem)
+ * Right stick up       |   Move arm to 'specimen high' set position (locks arm subsystem)
+ * Right stick down     |   Move arm to 'specimen low' set position (locks arm subsystem)
  *
  * D-pad up button      |   Manually extend arm up
  * D-pad down button    |   Manually extend arm down
@@ -185,14 +186,17 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
         bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
-        bindToButtons(armGamepad, armSubsystem::doTheWibbleWobble, Button.Y); // Do the wibble-wobble (shake the arm rotation for intaking)
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("the wibble wobble 2"), Button.Y); // Move arm to 'the wibble wobble 2' set position
+        //bindToButtons(armGamepad, armSubsystem::doTheWibbleWobble, Button.Y); // Do the wibble-wobble (shake the arm rotation for intaking)
 
         bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake ground")); // Move arm to 'intake ground' set position
 
-        bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high")); // Move arm to 'basket high' set position
-        bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low")); // Move arm to 'basket low' set position
-        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high")); // Move arm to 'specimen high' set position
-        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low")); // Move arm to 'specimen low' set position
+        bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER), true, () -> armSubsystem.lockSetPosition(false)); // Unlock arm subsystem (set positions cannot be applied while locked)
+
+        bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high", true, true)); // Move arm to 'basket high' set position (locks arm subsystem)
+        bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low", true, true)); // Move arm to 'basket low' set position (locks arm subsystem)
+        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high", true, true)); // Move arm to 'specimen high' set position (locks arm subsystem)
+        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low", true, true)); // Move arm to 'specimen low' set position (locks arm subsystem)
 
         //bindToButtons(armGamepad, () -> cyclePositions("hang stage 1", "hang stage 2"), Button.START); // Move arm to 'hang stage 1' set position, then press again to move to 'hang stage 2'
 

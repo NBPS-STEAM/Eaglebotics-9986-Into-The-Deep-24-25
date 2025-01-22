@@ -75,8 +75,6 @@ public class DriveSubsystem extends SubsystemBase {
             this.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-            zeroHeading();
         }
         zeroDriveOnInit = true;
 

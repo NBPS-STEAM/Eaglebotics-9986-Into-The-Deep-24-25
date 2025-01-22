@@ -30,19 +30,14 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.*;
 import com.acmerobotics.roadrunner.ftc.Actions;
-import com.arcrobotics.ftclib.command.*;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
-import org.jetbrains.annotations.NotNull;
 
 import java.lang.Math;
 
@@ -80,9 +75,6 @@ import java.lang.Math;
 @Autonomous(name="Road Runner Auto-OpMode", group="Autonomous OpMode")
 public class RoadRunnerAutoOpMode extends LinearOpMode {
 
-    // Constants (for only this routine)
-    private static final Vector2d BASKET_POS = new Vector2d(10, 64);
-
     // Hardware Variables
     private MecanumDrive drive;
     private ArmSubsystem armSubsystem;
@@ -98,11 +90,14 @@ public class RoadRunnerAutoOpMode extends LinearOpMode {
         armSubsystem = new ArmSubsystem(hardwareMap, Constants.ARM_ROTATION_POWER_AUTO, Constants.ARM_EXTENSION_POWER_AUTO, Constants.ARM_RAISE_POWER_AUTO);
 
         // Generate paths
+        // TODO: splines when going from basket to sample
+        // TODO: go straight from basket to sample (no approach strafe)?
+        // TODO: park in corner zone? maybe alternate opmode
         Action path = drive.actionBuilder(initialPose)
                 // Score preload
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(BASKET_POS)
+                .strafeTo(Constants.AUTO_BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
                 //.waitSeconds(2)
@@ -114,11 +109,11 @@ public class RoadRunnerAutoOpMode extends LinearOpMode {
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
                 .strafeTo(new Vector2d(16, 54))
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
-                .strafeTo(new Vector2d(24, 54))
+                .strafeTo(new Vector2d(22, 54))
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
                 .waitSeconds(0.5)
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(BASKET_POS)
+                .strafeTo(Constants.AUTO_BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
                 //.waitSeconds(2)
@@ -130,11 +125,11 @@ public class RoadRunnerAutoOpMode extends LinearOpMode {
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
                 .strafeTo(new Vector2d(16, 66))
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
-                .strafeTo(new Vector2d(24, 66))
+                .strafeTo(new Vector2d(22, 66))
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
                 .waitSeconds(0.5)
                 .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(BASKET_POS)
+                .strafeTo(Constants.AUTO_BASKET_POS)
                 .stopAndAdd(armSubsystem.YieldForRaiseTarget())
                 .turnTo(Math.PI * 3 / 4)
                 //.waitSeconds(2)
@@ -155,7 +150,7 @@ public class RoadRunnerAutoOpMode extends LinearOpMode {
 
 
         // Mark subsystems to not zero again once the next opmode begins (teleop)
-        ResetZeroState.markToNotZeroOnInit(true);
+        ResetZeroState.markToNotZeroOnInit(false);
 
         // Execute autonomous routine
         Actions.runBlocking(path);
