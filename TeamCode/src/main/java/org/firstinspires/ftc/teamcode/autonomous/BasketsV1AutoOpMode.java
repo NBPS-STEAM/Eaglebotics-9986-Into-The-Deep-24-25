@@ -72,8 +72,8 @@ import java.lang.Math;
  */
 
 @Config
-@Autonomous(name="Road Runner Auto-OpMode", group="Autonomous OpMode")
-public class RoadRunnerAutoOpMode extends LinearOpMode {
+@Autonomous(name="Baskets V1 Auto-OpMode", group="Autonomous OpMode")
+public class BasketsV1AutoOpMode extends LinearOpMode {
 
     // Hardware Variables
     private MecanumDrive drive;
