@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -34,6 +35,7 @@ public class Constants {
     public static final String  NAME_ARM_RAISE = "raiseMotor";
     public static final String  NAME_ARM_WRIST = "wristServo";
     public static final String[] NAMES_ARM_COLOR_RANGE = new String[]{"colorRangeSensor1", "colorRangeSensor2"};
+    public static final String  NAME_ARM_RETRACT = "retractMotor";
 
     public static final String  NAME_IMU = "imu";
 
@@ -49,6 +51,8 @@ public class Constants {
     public static final DcMotor.Direction DIRECTION_ARM_EXTEND = DcMotor.Direction.FORWARD;
     public static final DcMotor.Direction DIRECTION_ARM_RAISE  = DcMotor.Direction.REVERSE;
     public static final Servo.Direction   DIRECTION_ARM_WRIST  = Servo.Direction.FORWARD;
+    public static final DcMotor.Direction DIRECTION_ARM_RETRACT  = DcMotor.Direction.FORWARD;
+    public static final DcMotor.ZeroPowerBehavior ZEROPOWER_ARM_RETRACT  = DcMotor.ZeroPowerBehavior.FLOAT;
 
     public static final RevHubOrientationOnRobot.LogoFacingDirection
             IMU_HUB_LOGO_DIRECTION = RevHubOrientationOnRobot.LogoFacingDirection.DOWN;
@@ -61,8 +65,8 @@ public class Constants {
     public static final int       EXTENSION_TICKS_1_INCH     = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm extension to extend 1 inch
     public static final int       RAISE_TICKS_1_INCH         = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm raise to extend 1 inch
 
-    public static final int       ROTATION_TICKS_180_DEGREES = (1700 - 700) * 2; // The number of encoder ticks for the arm rotation to travel 180 degrees
-    public static final int       ROTATION_TICKS_NORTH       = 1700;     // The number of arm rotation encoder ticks at the north (straight up) position
+    public static final int       ROTATION_TICKS_180_DEGREES = (1650 - 650) * 2; // The number of encoder ticks for the arm rotation to travel 180 degrees
+    public static final int       ROTATION_TICKS_NORTH       = 1650;     // The number of arm rotation encoder ticks at the north (straight up) position
 
     public static final double    DRIVE_TICKS_REVOLUTION     = 537.6;  // The number of encoder ticks in one revolution of a drive motor
     public static final double    WHEEL_CIRCUMFERENCE_INCHES = (96 / 25.4) * Math.PI; // The approximate circumference of a drive motor's wheel
@@ -75,7 +79,8 @@ public class Constants {
 
     public static final double    ARM_ROTATION_POWER          = 0.5; // The amount of power that the arm rotates with in teleop
     public static final double    ARM_EXTENSION_POWER         = 0.5; // The amount of power that the arm extends/retracts with in teleop
-    public static final double    ARM_RAISE_POWER             = 1.0; // The amount of power that the arm rises/lowers with
+    public static final double    ARM_RAISE_POWER             = 1.0; // The amount of power that the arm rises with
+    public static final double    ARM_RETRACT_POWER           = 1.0; // The amount of power that the arm lowers with (only used for hang)
 
     public static final double    ARM_ROTATION_POWER_MANUAL   = 0.5; // The amount of power that the arm rotates with (MANUAL CONTROL)
     public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // The amount of power that the arm extends/retracts with (MANUAL CONTROL)
@@ -85,7 +90,8 @@ public class Constants {
     public static final double    INTAKE_POSITION             = 1.0; // The position of the intake when intaking (closing) on a scale of 0 to 1
     public static final double    OUTTAKE_POSITION            = 0.29; // The position of the intake when outtaking (opening) on a scale of 0 to 1
 
-    public static final double    RAISE_TARGET_THRESHOLD      = 1.0;  // The maximum distance of the raise from its target to consider it on-target (used in auto routine)
+    public static final double    ROTATION_TARGET_THRESHOLD   = 10.0;  // The maximum distance of the rotation from its target to consider it on-target (used in auto routine)
+    public static final double    RAISE_TARGET_THRESHOLD      = 10.0;  // The maximum distance of the raise from its target to consider it on-target (used in auto routine)
 
     public static final double    INTAKE_SAMPLE_THRESHOLD     = 15.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a sample, then it has it.
     public static final double    INTAKE_SPECIMEN_THRESHOLD   = 20.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a specimen, then it has it.
@@ -94,11 +100,9 @@ public class Constants {
 
 
     // Auto configuration
-    public static final double    ARM_ROTATION_POWER_AUTO     = 0.3; // The amount of power that the arm rotates with in the autonomous routine
-    public static final double    ARM_EXTENSION_POWER_AUTO    = 0.3; // The amount of power that the arm extends/retracts with in the autonomous routine
-    public static final double    ARM_RAISE_POWER_AUTO        = 1.0; // The amount of power that the arm rises/lowers with in the autonomous routine
-
-    public static final Vector2d  AUTO_BASKET_POS = new Vector2d(7.75, 63); // The position to which the robot should drive to reach the basket in auto
+    public static final double    ARM_ROTATION_POWER_AUTO     = 0.3; // The amount of power that the arm rotates with in the autonomous routine (some routines override this)
+    public static final double    ARM_EXTENSION_POWER_AUTO    = 0.3; // The amount of power that the arm extends/retracts with in the autonomous routine (some routines override this)
+    public static final double    ARM_RAISE_POWER_AUTO        = 1.0; // The amount of power that the arm rises/lowers with in the autonomous routine (some routines override this)
 
 
     // Testing TeleOp configuration

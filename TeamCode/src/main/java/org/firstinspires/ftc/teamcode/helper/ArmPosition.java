@@ -19,6 +19,7 @@ public class ArmPosition {
     private final double raisePosition;
     private final double wristAngle; // The angle for the wrist to point at, on a scale where 1 is up
     private final IntakeState intakeState; // What the intake should do at this position (intake, outtake, stop)
+    private Runnable after; // An optional method to run after applying this position
 
     // Constructor method
     public ArmPosition(double rotationAngle, double extensionPosition, double raisePosition, double wristAngle) {
@@ -52,5 +53,18 @@ public class ArmPosition {
 
     public IntakeState getIntakeState() {
         return intakeState;
+    }
+
+    public Runnable getAfter() {
+        return after;
+    }
+
+    /**
+     * Provide a Runnable to be executed after this position is applied.
+     * @return This same ArmPosition, for chaining
+     */
+    public ArmPosition after(Runnable after) {
+        this.after = after;
+        return this;
     }
 }

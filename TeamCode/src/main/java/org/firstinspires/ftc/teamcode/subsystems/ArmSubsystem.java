@@ -17,7 +17,9 @@ import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.helper.NullColorRangeSensor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Set;
 
 /**
  * This is a class for a "subsystem" that manages all of the parts of the arm. It's in charge of
@@ -50,6 +52,8 @@ public class ArmSubsystem extends SubsystemBase {
     private final Servo wristServo;
     private final Servo intakeServo;
     private final ColorRangeSensor[] colorRangeSensors;
+    private final DcMotor retractMotor; // The motor that retracts the raise
+    // retractMotor was thrown in last-minute and is sloppily implemented. Too bad!
 
 
     // Constructor/initialization method
@@ -60,20 +64,26 @@ public class ArmSubsystem extends SubsystemBase {
         // Add all named arm positions
         // TODO: rename wibble wobble 2, remove wibble wobble 1, remove wibble wobble commands
         namedPositions = new HashMap<>();
-        //(NOT UPDATED) addNamedPosition("compact", new ArmPosition(0.3, 2, 0, 0.54, IntakeState.INTAKE));
         addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
         addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
         addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
         addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
         addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
-        addNamedPosition("basket high", new ArmPosition(0.9, 62+6, 160, 1.625));
+        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.625));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
         addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
         addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
 
-        //(NOT UPDATED) addNamedPosition("hang stage 1", new ArmPosition(0.9, 2, 160, 0.54));
-        //(NOT UPDATED) addNamedPosition("hang stage 2", new ArmPosition(0.9, 2, 0, 0.54));
+        addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
+        addNamedPosition("hang stage 2", new ArmPosition(0.35, 2, 0, 1.55)
+                .after(() -> applyRetractPositionUnscaled(10000)));
 
+        // These positions are only used in autonomous routines
+        addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
+        addNamedPosition("intake ground-high", new ArmPosition(0.17, 68, 160, 1.442, IntakeState.OUTTAKE)
+                .after(() -> applyRotationPositionUnscaled(-50)));
+
+        // ???
         addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
 
         // Get all the hardware using the names set in the Constants file.
@@ -82,6 +92,7 @@ public class ArmSubsystem extends SubsystemBase {
         this.raiseMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RAISE);
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
         this.intakeServo = hardwareMap.get(Servo.class, Constants.NAME_INTAKE);
+        this.retractMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RETRACT);
 
         this.colorRangeSensors = new ColorRangeSensor[Constants.NAMES_ARM_COLOR_RANGE.length];
         for (int i = 0; i < this.colorRangeSensors.length; i++) {
@@ -110,17 +121,22 @@ public class ArmSubsystem extends SubsystemBase {
 
         this.intakeServo.setDirection(Constants.DIRECTION_INTAKE);
 
+        this.retractMotor.setDirection(Constants.DIRECTION_ARM_RETRACT);
+        this.retractMotor.setZeroPowerBehavior(Constants.ZEROPOWER_ARM_RETRACT);
+
         // Zero unless told not to
         if (zeroOnInit) {
             this.rotationMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.extensionMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.raiseMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.retractMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         }
         zeroOnInit = true;
 
         changeControlModeToRunToPosition(this.rotationMotor, rotationPower);
         changeControlModeToRunToPosition(this.extensionMotor, extensionPower);
         changeControlModeToRunToPosition(this.raiseMotor, raisePower);
+        changeControlModeToRunToPosition(this.retractMotor, Constants.ARM_RETRACT_POWER);
 
         // Prepare smart intake cycle command
         wibbleWobbleCommand = composeWibbleWobbleCommand();
@@ -185,12 +201,15 @@ public class ArmSubsystem extends SubsystemBase {
         applyRaisePosition(position.getRaisePosition());
         applyWristPosition(position.getWristAngle());
         applyIntakeState(position.getIntakeState());
+        applyRetractPositionUnscaled(0);
+        if (position.getAfter() != null) position.getAfter().run();
     }
 
     public void moveMotorsToZero() {
         applyRotationPositionUnscaled(0);
         applyExtensionPositionUnscaled(0);
         applyRaisePositionUnscaled(0);
+        applyRetractPositionUnscaled(0);
     }
 
     public void applyRotationPosition(double scaled) {
@@ -252,6 +271,19 @@ public class ArmSubsystem extends SubsystemBase {
                 intakeState = state;
                 intakeServo.setPosition(Constants.OUTTAKE_POSITION);
                 break;
+        }
+    }
+
+    public void applyRetractPositionUnscaled(int encoder) {
+        checkControlModeRunToPosition(retractMotor, Constants.ARM_RETRACT_POWER);
+        retractMotor.setTargetPosition(encoder);
+    }
+
+    public void cycleHang() {
+        if ("hang stage 1".equals(getLastSetPosition())) {
+            applyNamedPosition("hang stage 2", true, true);
+        } else {
+            applyNamedPosition("hang stage 1");
         }
     }
 
@@ -377,6 +409,48 @@ public class ArmSubsystem extends SubsystemBase {
         raiseMotor.setPower(power);
     }
 
+    public Command getRunRotationPowerCommand(double power) {
+        return new RunMotorPowerCommand(rotationMotor, power);
+    }
+
+    public Command getRunExtensionPowerCommand(double power) {
+        return new RunMotorPowerCommand(extensionMotor, power);
+    }
+
+    public Command getRunRaisePowerCommand(double power) {
+        return new RunMotorPowerCommand(raiseMotor, power);
+    }
+
+    public Command getRunRetractPowerCommand(double power) {
+        return new RunMotorPowerCommand(retractMotor, power);
+    }
+
+    class RunMotorPowerCommand implements Command {
+        private final DcMotor motor;
+        private final double power;
+
+        public RunMotorPowerCommand(DcMotor motor, double power) {
+            this.motor = motor;
+            this.power = power;
+        }
+
+        @Override
+        public void initialize() {
+            checkControlModeRunWithoutEncoder(motor);
+            motor.setPower(power);
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            checkControlModeRunWithoutEncoder(motor);
+            motor.setPower(0);
+        }
+
+        @Override
+        public Set<Subsystem> getRequirements() {
+            return Collections.emptySet();
+        }
+    }
 
     // Checking and Setting Motor Modes
 
@@ -579,22 +653,52 @@ public class ArmSubsystem extends SubsystemBase {
     // https://rr.brott.dev/docs/v1-0/actions/
 
     /**
-     * @see YieldForRaiseTarget
+     * Generates a Road Runner Action that yields until the rotation has reached its target position.
+     * Used exclusively for Road Runner autonomous routines.
      */
-    public Action YieldForRaiseTarget() {
-        return new YieldForRaiseTarget();
+    public Action yieldForRotationTarget() {
+        return yieldForRotationTarget(Constants.ROTATION_TARGET_THRESHOLD);
+    }
+    public Action yieldForRotationTarget(double threshold) {
+        return new YieldForMotorTarget(getRotationMotor(), threshold);
     }
 
     /**
-     * Generates a Road Runner Action that yields until the raise has reached its target position
-     * for the last applied named state.
-     * If no named states have been applied yet, this ends immediately.
+     * Generates a Road Runner Action that yields until the raise has reached its target position.
      * Used exclusively for Road Runner autonomous routines.
      */
-    public class YieldForRaiseTarget implements Action {
+    public Action yieldForRaiseTarget() {
+        return yieldForRaiseTarget(Constants.RAISE_TARGET_THRESHOLD);
+    }
+    public Action yieldForRaiseTarget(double threshold) {
+        return new YieldForMotorTarget(getRaiseMotor(), threshold);
+    }
+
+    /**
+     * Represents a Road Runner Action that yields until a motor has reached its target position.
+     * Used exclusively for Road Runner autonomous routines.
+     * <p>Usually, inner classes (such as YieldForMotorTarget) must be tied to an instance of the outer class but may
+     * use variables/methods from that outer class. {@code static class} bypasses this, allowing you to create instances
+     * of the inner class without an instance of the outer class.</p>
+     * <p>i.e. If this class were not static, then to create a new instance, you may do something like:</p>
+     * <p>{@code new ArmSubsystem().new YieldForMotorTarget()}</p>
+     * However, because it is static, you can instead just do:
+     * <p>{@code new ArmSubsystem.YieldForMotorTarget()}</p>
+     * <p>Note: Because new YieldForMotorTargets are only ever created in its outer class (this class), the fact that
+     * it's static doesn't actually change anything. But now you know what static classes are!</p>
+     */
+    static class YieldForMotorTarget implements Action {
+        private final DcMotor motor;
+        private final double threshold;
+
+        public YieldForMotorTarget(DcMotor motor, double threshold) {
+            this.motor = motor;
+            this.threshold = threshold;
+        }
+
         @Override
         public boolean run(@NotNull TelemetryPacket packet) {
-            return Math.abs(getRaiseMotor().getCurrentPosition() - getRaiseMotor().getTargetPosition()) > Constants.RAISE_TARGET_THRESHOLD; // If true, this action will run again
+            return Math.abs(motor.getCurrentPosition() - motor.getTargetPosition()) > threshold; // If true, this action will run again
         }
     }
 }

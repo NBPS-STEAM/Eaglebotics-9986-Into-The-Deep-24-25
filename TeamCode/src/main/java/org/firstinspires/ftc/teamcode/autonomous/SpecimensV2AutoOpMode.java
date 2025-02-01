@@ -30,16 +30,16 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.roadrunner.*;
+import com.acmerobotics.roadrunner.Action;
+import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
-import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
+import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune2;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
-
-import java.lang.Math;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -49,9 +49,8 @@ import java.lang.Math;
  * Hardware names are listed in the Constants file. You must correctly set all hardware names for each
  * motor/servo/etc. in the Driver Station for the code to find your devices.
  *
- * This code goes from the starting position (second tile, ~40 in. from the left wall and facing away from the back wall),
- * scores a preload in the high net, collects and scores a few spike mark samples in the high net,
- * and then goes to park in the ascent zone.
+ * This code goes from the starting position (third tile, ~60 in. from the right wall and facing away from the back wall),
+ * scores a preloaded specimen on the high bar, and then goes to park in the observation zone.
  *
  * Before starting this OpMode, the arm lift must be in its lowest position and the extension fully
  * retracted. The robot must also be facing forward.
@@ -72,11 +71,11 @@ import java.lang.Math;
  */
 
 @Config
-@Autonomous(name="Baskets V1 Auto-OpMode (3 samples)", group="Autonomous OpMode")
-public class BasketsV1AutoOpMode extends LinearOpMode {
+@Autonomous(name="Specimens V2 Auto-OpMode (3 specimens)", group="Autonomous OpMode")
+public class SpecimensV2AutoOpMode extends LinearOpMode {
 
     // Hardware Variables
-    private MecanumDriveTune1 drive;
+    private MecanumDriveTune2 drive;
     private ArmSubsystem armSubsystem;
 
 
@@ -86,64 +85,35 @@ public class BasketsV1AutoOpMode extends LinearOpMode {
         // Reset zero state; autonomous opmodes should always zero the robot
         ResetZeroState.resetZeroState();
         // Initialize MecanumDrive at a particular pose
-        Pose2d initialPose = new Pose2d(0, 36, 0);
-        drive = new MecanumDriveTune1(hardwareMap, initialPose);
+        Pose2d initialPose = new Pose2d(0, -24, 0);
+        drive = new MecanumDriveTune2(hardwareMap, initialPose);
         // Initialize hardware
         armSubsystem = new ArmSubsystem(hardwareMap, Constants.ARM_ROTATION_POWER_AUTO, Constants.ARM_EXTENSION_POWER_AUTO, Constants.ARM_RAISE_POWER_AUTO);
 
         // Generate paths
-        // TODO: splines when going from basket to sample
-        // TODO: go straight from basket to sample (no approach strafe)?
-        // TODO: park in corner zone? maybe alternate opmode
-        final Vector2d AUTO_BASKET_POS = new Vector2d(7.75, 63);
         Action path = drive.actionBuilder(initialPose)
                 // Score preload
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(AUTO_BASKET_POS)
-                .stopAndAdd(armSubsystem.yieldForRaiseTarget())
-                .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
+                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen high"))
+                .strafeTo(new Vector2d(24, -24))
+                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen low"))
+                .stopAndAdd(armSubsystem.yieldForRotationTarget())
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
                 .waitSeconds(0.4)
 
-                // Score right spike mark sample
-                .turnTo(0)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
-                .strafeTo(new Vector2d(16, 54))
-                .stopAndAdd(armSubsystem.yieldForRaiseTarget())
-                .strafeTo(new Vector2d(22, 54))
+                // Move samples into observation zone TODO
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .waitSeconds(0.5)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(AUTO_BASKET_POS)
-                .stopAndAdd(armSubsystem.yieldForRaiseTarget())
-                .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
+                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen high"))
+                .strafeTo(new Vector2d(24, -24))
+                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen low"))
+                .stopAndAdd(armSubsystem.yieldForRotationTarget())
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
                 .waitSeconds(0.4)
 
-                // Score center spike mark sample
-                .turnTo(0)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
-                .strafeTo(new Vector2d(16, 66))
-                .stopAndAdd(armSubsystem.yieldForRaiseTarget())
-                .strafeTo(new Vector2d(22, 66))
-                .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .waitSeconds(0.5)
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("basket high"))
-                .strafeTo(AUTO_BASKET_POS)
-                .stopAndAdd(armSubsystem.yieldForRaiseTarget())
-                .turnTo(Math.PI * 3 / 4)
-                //.waitSeconds(2)
-                .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
-                .waitSeconds(0.4)
-
-                // Park in ascent zone
-                //.turnTo(0)
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("stow"))
-                .strafeTo(new Vector2d(68, 48))
-                .strafeTo(new Vector2d(68, 38))
+                // Park in observation zone
+                .strafeTo(new Vector2d(6, -24))
+                .afterTime(0, () -> armSubsystem.applyNamedPosition("stow"))
+                .strafeTo(new Vector2d(6, -60))
                 .build();
 
 
