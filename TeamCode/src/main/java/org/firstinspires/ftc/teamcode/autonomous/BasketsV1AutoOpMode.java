@@ -40,6 +40,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 
 import java.lang.Math;
+import java.util.Arrays;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -96,6 +97,15 @@ public class BasketsV1AutoOpMode extends LinearOpMode {
         // TODO: go straight from basket to sample (no approach strafe)?
         // TODO: park in corner zone? maybe alternate opmode
         final Vector2d AUTO_BASKET_POS = new Vector2d(7.75, 63);
+
+        final VelConstraint fastVelConstraint =
+                new MinVelConstraint(Arrays.asList(
+                        drive.kinematics.new WheelVelConstraint(50),
+                        new AngularVelConstraint(Math.PI * 1.5)
+                ));
+        final AccelConstraint fastAccelConstraint = new ProfileAccelConstraint(-50, 50);
+        final TurnConstraints fastTurnConstraints = new TurnConstraints(Math.PI * 1.5, -Math.PI * 1.5, Math.PI * 1.5);
+
         Action path = drive.actionBuilder(initialPose)
                 // Score preload
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
@@ -139,13 +149,12 @@ public class BasketsV1AutoOpMode extends LinearOpMode {
                 .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
                 .waitSeconds(0.4)
 
-                // Park in ascent zone
-                //.turnTo(0)
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("stow"))
-                .strafeTo(new Vector2d(68, 48))
-                .strafeTo(new Vector2d(68, 38))
+                // Achieve Level 1 Ascent
+                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("ascent level 1"))
+                .strafeToLinearHeading(new Vector2d(68, 48), 0, fastVelConstraint, fastAccelConstraint)
+                .strafeToLinearHeading(new Vector2d(68, 30), -Math.PI / 2, fastVelConstraint, fastAccelConstraint)
+                .afterTime(0.0, () -> armSubsystem.setRotationPower(0.0))
                 .build();
-
 
         // Wait until start
         waitForStart();

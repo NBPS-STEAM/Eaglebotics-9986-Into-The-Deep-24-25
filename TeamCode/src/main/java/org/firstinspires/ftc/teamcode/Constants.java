@@ -100,8 +100,8 @@ public class Constants {
 
 
     // Auto configuration
-    public static final double    ARM_ROTATION_POWER_AUTO     = 0.3; // The amount of power that the arm rotates with in the autonomous routine (some routines override this)
-    public static final double    ARM_EXTENSION_POWER_AUTO    = 0.3; // The amount of power that the arm extends/retracts with in the autonomous routine (some routines override this)
+    public static final double    ARM_ROTATION_POWER_AUTO     = 0.4; // The amount of power that the arm rotates with in the autonomous routine (some routines override this)
+    public static final double    ARM_EXTENSION_POWER_AUTO    = 0.4; // The amount of power that the arm extends/retracts with in the autonomous routine (some routines override this)
     public static final double    ARM_RAISE_POWER_AUTO        = 1.0; // The amount of power that the arm rises/lowers with in the autonomous routine (some routines override this)
 
 

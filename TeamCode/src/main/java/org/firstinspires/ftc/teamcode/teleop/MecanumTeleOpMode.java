@@ -113,14 +113,16 @@ import java.util.function.DoubleSupplier;
  * Left stick down      |   Move arm to 'basket low' set position (locks arm subsystem)
  * Right stick up       |   Move arm to 'specimen high' set position (locks arm subsystem)
  * Right stick down     |   Move arm to 'specimen low' set position (locks arm subsystem)
- * Start button         |   Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2'
  *
  * D-pad up button      |   Manually extend arm up
  * D-pad down button    |   Manually extend arm down
  * D-pad right button   |   Manually rotate arm up
  * D-pad left button    |   Manually rotate arm down
+ * Start button         |   Move arm to 'hang stage 1' position, then press again to move to manually rotate arm up (full power)
  * Select + d-pad up    |   Manually raise arm up
  * Select + d-pad down  |   Manually raise arm down
+ * Select + d-pad right |   Manually increase wrist position offset
+ * Select + d-pad left  |   Manually decrease wrist position offset
  * Select + left bumper |   Zero (reset) extension motor
  * Select + right bumper|   Zero (reset) rotation motor
  * Select + start button|   Zero (reset) raise motor
@@ -183,10 +185,10 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToButtons(baseGamepad, driveSubsystem::setSlowSpeed, Button.B); // Drive at slow speed
 
         // Retraction
-        combineButtons(baseGamepad, Button.LEFT_BUMPER) // Manually reverse retraction motor (release for going up)
-                .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(-1.0));
-        combineButtons(baseGamepad, Button.RIGHT_BUMPER) // Manually forward retraction motor (tighten for going down)
-                .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(1.0));
+        //combineButtons(baseGamepad, Button.LEFT_BUMPER) // Manually reverse retraction motor (release for going up)
+        //        .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(-1.0));
+        //combineButtons(baseGamepad, Button.RIGHT_BUMPER) // Manually forward retraction motor (tighten for going down)
+        //        .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(1.0));
 
 
         // Arm Controls
@@ -208,7 +210,8 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high", true, true)); // Move arm to 'specimen high' set position (locks arm subsystem)
         bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low", true, true)); // Move arm to 'specimen low' set position (locks arm subsystem)
 
-        bindToButtonButNot(armGamepad, armSubsystem::cycleHang, Button.START, Button.BACK); // Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2'
+        //buttonButNot(armGamepad, Button.START, Button.BACK)
+        //        .whileActiveOnce(armSubsystem.cycleHangCommand()); // Move arm to 'hang stage 1' position, then press again to move to manually rotate arm up (full power)
 
         // Intake Controls
         bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.LEFT_BUMPER, Button.BACK); // Start outtake (open claw)
@@ -226,10 +229,10 @@ public class MecanumTeleOpMode extends CommandOpMode {
         buttonButNot(armGamepad, Button.DPAD_DOWN, Button.BACK) // Manually extend arm down
                 .whileActiveOnce(armSubsystem.getRunExtensionPowerCommand(-Constants.ARM_EXTENSION_POWER_MANUAL));
 
-        combineButtons(armGamepad, Button.DPAD_RIGHT) // Manually rotate arm up
+        buttonButNot(armGamepad, Button.DPAD_RIGHT, Button.BACK) // Manually rotate arm up
                 .whileActiveOnce(armSubsystem.getRunRotationPowerCommand(Constants.ARM_ROTATION_POWER_MANUAL));
 
-        combineButtons(armGamepad, Button.DPAD_LEFT) // Manually rotate arm down
+        buttonButNot(armGamepad, Button.DPAD_LEFT, Button.BACK) // Manually rotate arm down
                 .whileActiveOnce(armSubsystem.getRunRotationPowerCommand(-Constants.ARM_ROTATION_POWER_MANUAL));
 
         combineButtons(armGamepad, Button.DPAD_UP, Button.BACK) // Manually raise arm up
@@ -237,6 +240,12 @@ public class MecanumTeleOpMode extends CommandOpMode {
 
         combineButtons(armGamepad, Button.DPAD_DOWN, Button.BACK) // Manually raise arm down
                 .whileActiveOnce(armSubsystem.getRunRaisePowerCommand(-Constants.ARM_RAISE_POWER_MANUAL));
+
+        combineButtons(armGamepad, Button.DPAD_RIGHT, Button.BACK) // Manually increase wrist position offset
+                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(0.01));
+
+        combineButtons(armGamepad, Button.DPAD_LEFT, Button.BACK) // Manually decrease wrist position offset
+                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(-0.01));
 
 
         // Default/Repeating Commands

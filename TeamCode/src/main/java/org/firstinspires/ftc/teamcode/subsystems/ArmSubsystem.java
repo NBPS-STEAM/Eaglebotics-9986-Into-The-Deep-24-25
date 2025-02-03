@@ -43,6 +43,7 @@ public class ArmSubsystem extends SubsystemBase {
     private final Command smartIntakeCommand;
     private String lastSetPosition = "";
     private IntakeState intakeState = IntakeState.NONE;
+    private double wristOffset = 0.0;
     private boolean isSetPositionLocked = false;
 
     // Hardware variables
@@ -64,27 +65,54 @@ public class ArmSubsystem extends SubsystemBase {
         // Add all named arm positions
         // TODO: rename wibble wobble 2, remove wibble wobble 1, remove wibble wobble commands
         namedPositions = new HashMap<>();
-        addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
-        addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
-        addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
-        addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
-        addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
-        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.625));
-        addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
-        addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
-        addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
+        if (true) {
+            // NORMAL POSITION
+            addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
+            addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
+            addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
+            addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
+            addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
+            addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.625));
+            addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
+            addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
+            addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
 
-        addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
-        addNamedPosition("hang stage 2", new ArmPosition(0.35, 2, 0, 1.55)
-                .after(() -> applyRetractPositionUnscaled(10000)));
+            //addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
+            //addNamedPosition("hang stage 2", new ArmPosition(0.17, 2, 0, 1.55));
+            addNamedPosition("hang stage 1", new ArmPosition(1.5, 2, 160, 1.55));
 
-        // These positions are only used in autonomous routines
-        addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
-        addNamedPosition("intake ground-high", new ArmPosition(0.17, 68, 160, 1.442, IntakeState.OUTTAKE)
-                .after(() -> applyRotationPositionUnscaled(-50)));
+            // These positions are only used in autonomous routines
+            addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
+            addNamedPosition("ascent level 1", new ArmPosition(0.65, 2, 80, 1.55));
+            addNamedPosition("intake ground-high", new ArmPosition(0.17, 68, 160, 1.442, IntakeState.OUTTAKE)
+                    .after(() -> applyRotationPositionUnscaled(-50)));
 
-        // ???
-        addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
+            // ???
+            addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
+        } else {
+            // ALTERNATE POSITIONS FOR NO RAISE
+            addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
+            addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
+            addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
+            addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
+            addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
+            addNamedPosition("basket high", new ArmPosition(0.9, 68, 0, 1.625));
+            addNamedPosition("basket low", new ArmPosition(0.9, 2, 0, 1.55));
+            addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
+            addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
+
+            //addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
+            //addNamedPosition("hang stage 2", new ArmPosition(0.17, 2, 0, 1.55));
+            addNamedPosition("hang stage 1", new ArmPosition(0.4, 2, 0, 1.4));
+
+            // These positions are only used in autonomous routines
+            addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
+            addNamedPosition("intake ground-high", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.OUTTAKE)
+                    .after(() -> applyRotationPositionUnscaled(-50)));
+
+            // ???
+            addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
+        }
 
         // Get all the hardware using the names set in the Constants file.
         this.rotationMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
@@ -249,7 +277,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public void applyWristPositionUnscaled(double encoder) {
-        wristServo.setPosition(encoder);
+        wristServo.setPosition(encoder + wristOffset);
     }
 
     public void applyIntakeState(IntakeState state) {
@@ -279,12 +307,8 @@ public class ArmSubsystem extends SubsystemBase {
         retractMotor.setTargetPosition(encoder);
     }
 
-    public void cycleHang() {
-        if ("hang stage 1".equals(getLastSetPosition())) {
-            applyNamedPosition("hang stage 2", true, true);
-        } else {
-            applyNamedPosition("hang stage 1");
-        }
+    public Command cycleHangCommand() {
+        return new ConditionalCommand(getRunRotationPowerCommand(1.0), new InstantCommand(() -> applyNamedPosition("hang stage 1")), () -> "hang stage 1".equals(getLastSetPosition()));
     }
 
     // Special Actions
@@ -452,6 +476,12 @@ public class ArmSubsystem extends SubsystemBase {
         }
     }
 
+    public void changeWristOffset(double delta) {
+        double prepos = getWristPositionUnscaled();
+        wristOffset += delta;
+        applyWristPositionUnscaled(prepos);
+    }
+
     // Checking and Setting Motor Modes
 
     private void checkControlModeRunToPosition(DcMotor motor, double power) {
@@ -603,12 +633,12 @@ public class ArmSubsystem extends SubsystemBase {
 
     /** @return The angle that the wrist is pointing at, on a scale where 1 is up */
     public double getWristPosition() {
-        return Calculations.encoderToScaleArmWrist(wristServo.getPosition());
+        return Calculations.encoderToScaleArmWrist(getWristPositionUnscaled());
     }
 
     /** @return The angle that the wrist is pointing at, unscaled */
     public double getWristPositionUnscaled() {
-        return wristServo.getPosition();
+        return wristServo.getPosition() - wristOffset;
     }
 
     public double getIntakePosition() {

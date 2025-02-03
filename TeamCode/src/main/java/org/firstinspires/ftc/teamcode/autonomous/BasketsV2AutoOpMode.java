@@ -189,7 +189,7 @@ public class BasketsV2AutoOpMode extends LinearOpMode {
 
                 // Park in ascent zone and achieve Level 1 Ascent
                 .stopAndAdd(blockIfTimeout(2.0))
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("specimen low"))
+                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("ascent level 1"))
                 .setTangent(adaptAngle(Math.PI / 2))
                 .splineToSplineHeading(KEYPOINT_4, adaptAngle(Math.PI / 2))
                 .stopAndAdd(armSubsystem.yieldForRaiseTarget())
