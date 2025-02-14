@@ -1,0 +1,19 @@
+Some of the classes in this project make use of internal classes, a feature of Java. This is a quick explanation.
+
+In Java, internal classes (aka inner classes) are classes declared within another class.
+
+Instances of inner classes are tied to an instance of the containing (outer) class. Inner classes have access to
+the variables and methods of their outer class; when the code runs, these pull from the instance of the outer class
+that the instance of the inner class is tied to.
+
+Internal classes are helpful for those times when multiple distinct things need to share the exact same values
+(i.e. hardware objects, which may have unintended side effects if initialized more than once). You could also do
+this by copying the values between multiple classes, but internal classes can make this simpler, better organized,
+and easier to keep synchronized.
+
+There are also static inner classes. Static inner classes (declared using 'static class' instead of 'class') are not tied
+to an instance of the outer class. Because of this, new objects of static inner classes can be created without an instance
+of the outer class, but can't access non-static variables/methods from the outer class. This is sometimes used to organize
+similar classes (i.e. Commands) by making them all static inner classes of the same outer class.
+
+Simple examples of inner classes and static inner classes can be found in ArmSubsystem in RunMotorPowerCommand and YieldForMotorTarget.

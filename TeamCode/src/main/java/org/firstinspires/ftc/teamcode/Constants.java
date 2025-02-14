@@ -1,11 +1,16 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Size;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 /*
  * This is a class that contains numbers to be used elsewhere in the code.
@@ -38,6 +43,8 @@ public class Constants {
     public static final String  NAME_ARM_RETRACT = "retractMotor";
 
     public static final String  NAME_IMU = "imu";
+
+    public static final String  NAME_CAMERA = "webcam1";
 
     // Hardware Directions
     public static final DcMotor.Direction DIRECTION_DRIVE_FL = DcMotor.Direction.FORWARD;
@@ -85,24 +92,31 @@ public class Constants {
     public static final double    ARM_ROTATION_POWER_MANUAL   = 0.5; // The amount of power that the arm rotates with (MANUAL CONTROL)
     public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // The amount of power that the arm extends/retracts with (MANUAL CONTROL)
     public static final double    ARM_RAISE_POWER_MANUAL      = 0.5; // The amount of power that the arm rises/lowers with (MANUAL CONTROL)
+    public static final double    ARM_WRIST_RATE_MANUAL       = 0.02; // The rate that the wrist turns at while manually offsetting it (MANUAL CONTROL)
 
     public static final double    INTAKE_PRIME_POSITION       = 0.29; // The position of the intake when primed to intake on a scale of 0 to 1
     public static final double    INTAKE_POSITION             = 1.0; // The position of the intake when intaking (closing) on a scale of 0 to 1
     public static final double    OUTTAKE_POSITION            = 0.29; // The position of the intake when outtaking (opening) on a scale of 0 to 1
 
-    public static final double    ROTATION_TARGET_THRESHOLD   = 10.0;  // The maximum distance of the rotation from its target to consider it on-target (used in auto routine)
-    public static final double    RAISE_TARGET_THRESHOLD      = 10.0;  // The maximum distance of the raise from its target to consider it on-target (used in auto routine)
+    public static final int       ROTATION_TARGET_THRESHOLD   = 10;  // The maximum distance of the rotation from its target to consider it on-target
+    public static final int       EXTENSION_TARGET_THRESHOLD  = 10;  // The maximum distance of the extension from its target to consider it on-target
+    public static final int       RAISE_TARGET_THRESHOLD      = 10;  // The maximum distance of the raise from its target to consider it on-target
 
     public static final double    INTAKE_SAMPLE_THRESHOLD     = 15.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a sample, then it has it.
     public static final double    INTAKE_SPECIMEN_THRESHOLD   = 20.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this when looking for a specimen, then it has it.
 
     public static final double    STICK_COMMAND_THRESHOLD     = 0.8;  // If a controller joystick moves farther than this, it can trigger a command.
+    public static final double    STICK_INTERRUPT_DEADZONE_SQR = 0.15*0.15; // If either of the base driver's joysticks move more than this, any running autonomous driving command will be interrupted (squared)
 
 
     // Auto configuration
     public static final double    ARM_ROTATION_POWER_AUTO     = 0.4; // The amount of power that the arm rotates with in the autonomous routine (some routines override this)
     public static final double    ARM_EXTENSION_POWER_AUTO    = 0.4; // The amount of power that the arm extends/retracts with in the autonomous routine (some routines override this)
     public static final double    ARM_RAISE_POWER_AUTO        = 1.0; // The amount of power that the arm rises/lowers with in the autonomous routine (some routines override this)
+
+    public static final double    LOCALIZATION_VISION_RANGE         = 200.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
+    //public static       double    LOCALIZATION_LINEAR_THRESHOLD_SQR = Double.POSITIVE_INFINITY;//9.0; // The maximum speed at which the camera can be used to localize (squared)
+    //public static       double    LOCALIZATION_ANGULAR_THRESHOLD    = Double.POSITIVE_INFINITY;//Math.PI * 0.5; // The maximum angular speed at which the camera can be used to localize
 
 
     // Testing TeleOp configuration
@@ -111,5 +125,56 @@ public class Constants {
 
     public static final double    TESTING_DCMOTOR_OFFSET_RATE = 5.0;  // The rate at which a DC motor's position will be changed when offsetting in testing mode
     public static final double    TESTING_SERVO_OFFSET_RATE   = 0.02; // The rate at which a DC motor's position will be changed when offsetting in testing mode
+
+
+    // Camera configuration
+    /**
+     * Variables to store the position and orientation of the camera on the robot. Setting these
+     * values requires a definition of the axes of the camera and robot:
+     *
+     * Camera axes:
+     * Origin location: Center of the lens
+     * Axes orientation: +x right, +y down, +z forward (from camera's perspective)
+     *
+     * Robot axes (this is typical, but you can define this however you want):
+     * Origin location: Center of the robot at field height
+     * Axes orientation: +x right, +y forward, +z upward
+     *
+     * Position:
+     * If all values are zero (no translation), that implies the camera is at the center of the
+     * robot. Suppose your camera is positioned 5 inches to the left, 7 inches forward, and 12
+     * inches above the ground - you would need to set the position to (-5, 7, 12).
+     *
+     * Orientation:
+     * If all values are zero (no rotation), that implies the camera is pointing straight up. In
+     * most cases, you'll need to set the pitch to -90 degrees (rotation about the x-axis), meaning
+     * the camera is horizontal. Use a yaw of 0 if the camera is pointing forwards, +90 degrees if
+     * it's pointing straight left, -90 degrees for straight right, etc. You can also set the roll
+     * to +/-90 degrees if it's vertical, or 180 degrees if it's upside-down.
+     */
+    public static final Position           CAM_POSITION    = new Position(DistanceUnit.INCH, 6.875, 2.625, 5.5, 0);
+    public static final YawPitchRollAngles CAM_ORIENTATION = new YawPitchRollAngles(AngleUnit.DEGREES, -90, -90, 0, 0);
+    public static       int                CAM_SIZE_X      = 1280;
+    public static       int                CAM_SIZE_Y      = 720;
+    public static       float              CAM_DECIMATION  = 3;
+    public static       long               CAM_EXPOSURE_MS = 1;
+    // For new global-shutter camera with black 3D-printed case:
+    // TODO: label the model of camera on the case
+    public static       double             CAM_FX          = 906.797;
+    public static       double             CAM_FY          = 906.797;
+    public static       double             CAM_CX          = 613.192;
+    public static       double             CAM_CY          = 341.331;
+    // For old Logitech webcam with white 3D-printed case:
+    //public static       double             CAM_FX          = 956.17;
+    //public static       double             CAM_FY          = 956.17;
+    //public static       double             CAM_CX          = 438.219;
+    //public static       double             CAM_CY          = 244.697;
+
+
+    // Field-relative positions (based on AprilTag localization)
+    // These are the positions for the RED alliance and will be automatically mirrored for the blue alliance.
+    public static final Pose2d POS_BASKETS_APPROACH        = new Pose2d(-50, -50, Math.PI);
+    public static final Pose2d POS_BASKETS_SCORE           = new Pose2d(-56, -40, Math.PI * 3 / 4);
+    public static final Pose2d POS_INTAKE_APPROACH         = new Pose2d(-40, -10, 0);
 
 }

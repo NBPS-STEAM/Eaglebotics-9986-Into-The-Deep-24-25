@@ -29,18 +29,21 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
+import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.*;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
+import com.qualcomm.robotcore.hardware.Gamepad;
 import org.firstinspires.ftc.teamcode.Constants;
-import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
-import org.firstinspires.ftc.teamcode.subsystems.TelemetrySubsystem;
+import org.firstinspires.ftc.teamcode.helper.QueryAlliance;
+import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
+import org.firstinspires.ftc.teamcode.subsystems.*;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.function.DoubleSupplier;
 
 /*
@@ -51,11 +54,12 @@ import java.util.function.DoubleSupplier;
  * Hardware names are listed in the Constants file. You must correctly set all hardware names for each
  * motor/servo/etc. in the Driver Station for the code to find your devices.
  *
- * This code uses gamepad controls for a claw and four motors on the ground and applies preset
- * positions for the arm's rotation, extension, and wrist. The driving is field-centric.
+ * This code uses gamepad controls for a claw and four motors on the ground and applies preset positions for the arm's
+ * rotation, extension, and wrist. The driving is field-centric. It makes use of a camera for vision recognition with
+ * AprilTags for autonomous driving features.
  *
  * Before starting this OpMode, the arm lift must be in its lowest position and the extension fully
- * retracted. The robot should also be facing forward, or else the field-centric driving will be off until reset.
+ * retracted.
  *
  * This code works by setting up the robot and then binding its functions to commands (controller buttons).
  * This is called command-based programming. It's about breaking your code into organized parts and
@@ -95,9 +99,13 @@ import java.util.function.DoubleSupplier;
  * West (X/□) button    |   Drive at fast speed
  * South (A/X) button   |   Drive at medium speed
  * East (B/○) button    |   Drive at slow speed
+ * Right trigger        |   Automatically drive and score in high basket (an AprilTag must be visible) (toggle)
+ * Left trigger         |   Stop automatically driving (can also be done by moving either stick)
  *
- * Left bumper          |   Manually reverse retraction motor (release for going up)
- * Right bumper         |   Manually forward retraction motor (tighten for going down)
+ * Start button         |   Manually forward retraction motor (tighten for going down)
+ * Select button        |   Manually reverse retraction motor (release for going up)
+ *
+ * The controller rumbles while an AprilTag is visible to the robot. This is required to start autonomous driving.*
  *
  *
  * Controller 2 (arm driver):
@@ -136,16 +144,16 @@ import java.util.function.DoubleSupplier;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
-@TeleOp(name="Mecanum Tele-OpMode", group="Driver OpMode")
-public class MecanumTeleOpMode extends CommandOpMode {
+@TeleOp(name="Mec-auto Tele-OpMode", group="Driver OpMode")
+public class MecautoTeleOpMode extends CommandOpMode {
 
     // Hardware Variables
     private GamepadEx baseGamepad;
     private GamepadEx armGamepad;
 
-    private DriveSubsystem driveSubsystem;
+    private DriveSubsystemRRVision driveSubsystem;
     private ArmSubsystem armSubsystem;
-    private TelemetrySubsystem telemetrySubsystem;
+    private VisionPortalSubsystem visionPortalSubsystem;
 
 
     // This is run when the "INIT" button is pressed on the Driver Station.
@@ -155,13 +163,24 @@ public class MecanumTeleOpMode extends CommandOpMode {
         baseGamepad = new GamepadEx(gamepad1);
         armGamepad = new GamepadEx(gamepad2);
 
-        driveSubsystem = new DriveSubsystem(hardwareMap, Constants.DRIVE_POWER_MULTIPLIER);
+        visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap);
         armSubsystem = new ArmSubsystem(hardwareMap);
-        telemetrySubsystem = new TelemetrySubsystem(this, driveSubsystem, armSubsystem);
 
-        // Disable telemetry?
-        // Uncomment to disable reporting telemetry (live information about the robot) to the Driver Station.
-        //telemetrySubsystem.disableTelemetry();
+        // Configure drive
+        DriveSubsystemRRVision.Params params = new DriveSubsystemRRVision.Params();
+        // path profile parameters (in inches)
+        params.maxWheelVel = 40.0;
+        params.minProfileAccel = -30.0;
+        params.maxProfileAccel = 30.0;
+
+        // turn profile parameters (in radians)
+        params.maxAngVel = Math.PI;
+        params.maxAngAccel = Math.PI;
+
+        driveSubsystem = new DriveSubsystemRRVision(hardwareMap, visionPortalSubsystem,
+                Localizers.ENCODERS_WITH_VISION, new Pose2d(0, 0, 0), params);
+
+        driveSubsystem.setFullSpeed();
 
 
         // Button bindings
@@ -177,17 +196,33 @@ public class MecanumTeleOpMode extends CommandOpMode {
         // Driving is done by the default command, which is set later in this method.
 
         // Reset Heading Direction
-        bindToButtons(baseGamepad, driveSubsystem::zeroHeading, Button.DPAD_DOWN); // Zero (reset) robot heading direction
+        bindToButtons(baseGamepad, driveSubsystem::zeroDriverHeading, Button.DPAD_DOWN); // Zero (reset) robot heading direction
 
         // Drive Speeds
         bindToButtons(baseGamepad, driveSubsystem::setFullSpeed, Button.X); // Drive at fast speed
         bindToButtons(baseGamepad, driveSubsystem::setMediumSpeed, Button.A); // Drive at medium speed
         bindToButtons(baseGamepad, driveSubsystem::setSlowSpeed, Button.B); // Drive at slow speed
 
+        // Autonomous Driving
+        Command driveToBasketCommand = driveSubsystem.getDriveToBasketCommand(armSubsystem);
+
+        // Automatically drive and score in high basket (an AprilTag must be visible)
+        getStickTrigger(() -> baseGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true)
+                .and(new Trigger(driveSubsystem::didLastPoseEstUseVision))
+                .and(new Trigger(() -> !driveToBasketCommand.isScheduled()))
+                .whenActive(driveToBasketCommand);
+
+        // Stop automatically driving (can also be done by moving either stick)
+        getStickTrigger(() -> baseGamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER), true)
+                .whileActiveContinuous(driveToBasketCommand::cancel);
+
+        getEitherStickBeyondTrigger(baseGamepad, Constants.STICK_INTERRUPT_DEADZONE_SQR)
+                .whenActive(driveToBasketCommand::cancel);
+
         // Retraction
-        combineButtons(baseGamepad, Button.LEFT_BUMPER) // Manually reverse retraction motor (release for going up)
+        combineButtons(baseGamepad, Button.BACK) // Manually reverse retraction motor (release for going up)
                 .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(-1.0));
-        combineButtons(baseGamepad, Button.RIGHT_BUMPER) // Manually forward retraction motor (tighten for going down)
+        combineButtons(baseGamepad, Button.START) // Manually forward retraction motor (tighten for going down)
                 .whileActiveOnce(armSubsystem.getRunRetractPowerCommand(1.0));
 
 
@@ -210,7 +245,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
         bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low", true, true)); // Move arm to 'specimen low' set position (locks arm subsystem)
 
         buttonButNot(armGamepad, Button.START, Button.BACK)
-                .whileActiveOnce(armSubsystem.cycleHangCommand()); // Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2' position
+                .whenActive(armSubsystem.cycleHangCommand()); // Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2' position
 
         // Intake Controls
         bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.LEFT_BUMPER, Button.BACK); // Start outtake (open claw)
@@ -247,16 +282,27 @@ public class MecanumTeleOpMode extends CommandOpMode {
                 .whileActiveContinuous(() -> armSubsystem.changeWristOffset(-Constants.ARM_WRIST_RATE_MANUAL));
 
 
-        // Default/Repeating Commands
+        // Default/Automatic Commands
 
         // The default command of a subsystem is repeatedly run while no other commands are sent to the subsystem.
-        // Since none of the commands above have been associated with a subsystem, these will always run constantly.
+        // If no other commands have been associated with a subsystem, these will run constantly.
 
+        // By default, drive the base using the gamepad
         driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(baseGamepad), driveSubsystem));
 
-        new RepeatCommand(new InstantCommand(armSubsystem::intakeIfHasSample)).schedule(false);
+        // When an AprilTag is visible, rumble the base driver's controller
+        new Trigger(driveSubsystem::didLastPoseEstUseVision).whileActiveOnce(new RumbleControllerCommand(baseGamepad.gamepad));
 
-        telemetrySubsystem.setDefaultCommand(new RunCommand(telemetrySubsystem::reportTelemetry, telemetrySubsystem));
+        // When the intake has a sample, cycle intake intelligently
+        new Trigger(armSubsystem::doesIntakeHaveSample).whenActive(armSubsystem::cycleIntakeSmart);
+
+        // At all times, update the telemetry log
+        driveSubsystem.new TelemetryLoggerCommand(telemetry).schedule(false);
+
+
+        // Get Alliance
+        // This must be done last, as it waits for user input (which could take until the end of init)
+        driveSubsystem.setIsBlueAlliance(QueryAlliance.query(this));
     }
 
 
@@ -265,7 +311,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
     /**
      * Bind an action to run through an instant command when one or more buttons of a gamepad are pressed.
      */
-    public void bindToButtons(GamepadEx gamepad, Runnable action, Button... buttons) {
+    public static void bindToButtons(GamepadEx gamepad, Runnable action, Button... buttons) {
         combineButtons(gamepad, buttons).whenActive(action); // action is put in an InstantCommand automatically by whenActive()
     }
     // Button... is the same as writing Button[], but when you use the method you can type multiple
@@ -275,14 +321,14 @@ public class MecanumTeleOpMode extends CommandOpMode {
     /**
      * Bind an action to run through an instant command when a button of a gamepad is pressed and another button of that same gamepad is not pressed.
      */
-    public void bindToButtonButNot(GamepadEx gamepad, Runnable action, Button button, Button notButton) {
+    public static void bindToButtonButNot(GamepadEx gamepad, Runnable action, Button button, Button notButton) {
         buttonButNot(gamepad, button, notButton).whenActive(action); // action is put in an InstantCommand automatically by whenActive()
     }
 
     /**
      * Combine multiple buttons of a gamepad into a single trigger.
      */
-    public Trigger combineButtons(GamepadEx gamepad, Button... buttons) {
+    public static Trigger combineButtons(GamepadEx gamepad, Button... buttons) {
         // This combines two triggers into one using and().
         // This turns the GamepadButton trigger into a regular Trigger.
         // whenActive() is the equivalent to whenPressed() for a regular Trigger.
@@ -294,7 +340,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
     /**
      * Get a trigger for a button, but active only while another button is not pressed.
      */
-    public Trigger buttonButNot(GamepadEx gamepad, Button button, Button notButton) {
+    public static Trigger buttonButNot(GamepadEx gamepad, Button button, Button notButton) {
         return gamepad.getGamepadButton(button).and(gamepad.getGamepadButton(notButton).negate());
     }
 
@@ -302,7 +348,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
      * Bind an action to run through an instant command when a {@link DoubleSupplier}'s return value
      * is beyond the threshold for joysticks.
      */
-    public void bindToStick(DoubleSupplier joystickSupplier, boolean whenAbove, Runnable action) {
+    public static void bindToStick(DoubleSupplier joystickSupplier, boolean whenAbove, Runnable action) {
         getStickTrigger(joystickSupplier, whenAbove).whenActive(action); // action is put in an InstantCommand automatically by whenActive()
     }
 
@@ -313,7 +359,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
      * expects a Supplier that returns a double: the value to be checked for the threshold.</p>
      * <p>This is most useful for binding actions to controller joysticks.</p>
      */
-    public Trigger getStickTrigger(DoubleSupplier joystickSupplier, boolean whenAbove) {
+    public static Trigger getStickTrigger(DoubleSupplier joystickSupplier, boolean whenAbove) {
         if (whenAbove) {
             return new Trigger(() -> joystickSupplier.getAsDouble() > Constants.STICK_COMMAND_THRESHOLD);
         } else {
@@ -322,14 +368,37 @@ public class MecanumTeleOpMode extends CommandOpMode {
     }
 
     /**
-     * Out of two arm positions, apply the first position, or apply the second position if already
-     * in the first position.
+     * Get a {@link Trigger} that is active while either joystick on the gamepad
+     * is farther from the center than the square root of thresholdSqr.
      */
-    private void cyclePositions(String position1, String position2) {
-        if (armSubsystem.getLastSetPosition().equals(position1)) {
-            armSubsystem.applyNamedPosition(position2);
-        } else {
-            armSubsystem.applyNamedPosition(position1);
+    public static Trigger getEitherStickBeyondTrigger(GamepadEx gamepad, double thresholdSqr) {
+        return new Trigger(() ->
+                (gamepad.getLeftX() * gamepad.getLeftX() + gamepad.getLeftY() * gamepad.getLeftY() > thresholdSqr)
+                || (gamepad.getRightX() * gamepad.getRightX() + gamepad.getRightY() * gamepad.getRightY() > thresholdSqr)
+        );
+    }
+
+
+    class RumbleControllerCommand implements Command {
+        @Override
+        public Set<Subsystem> getRequirements() {
+            return Collections.emptySet();
+        }
+
+        private final Gamepad gamepad;
+
+        public RumbleControllerCommand(Gamepad gamepad) {
+            this.gamepad = gamepad;
+        }
+
+        @Override
+        public void initialize() {
+            gamepad.rumble(150000);
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            gamepad.stopRumble();
         }
     }
 }

@@ -39,7 +39,6 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
-    private final Command wibbleWobbleCommand;
     private final Command smartIntakeCommand;
     private String lastSetPosition = "";
     private IntakeState intakeState = IntakeState.NONE;
@@ -53,8 +52,11 @@ public class ArmSubsystem extends SubsystemBase {
     private final Servo wristServo;
     private final Servo intakeServo;
     private final ColorRangeSensor[] colorRangeSensors;
+    /**
+     * BE VERY CAREFUL!! If raiseMotor and retractMotor are activated at the same time, the robot WILL tear itself apart.
+     * Don't do that! Please!! You must be as safe as possible if you ever use retractMotor.
+     */
     private final DcMotor retractMotor; // The motor that retracts the raise
-    // retractMotor was thrown in last-minute and is sloppily implemented. Too bad!
 
 
     // Constructor/initialization method
@@ -63,56 +65,28 @@ public class ArmSubsystem extends SubsystemBase {
     }
     public ArmSubsystem(HardwareMap hardwareMap, double rotationPower, double extensionPower, double raisePower) {
         // Add all named arm positions
-        // TODO: rename wibble wobble 2, remove wibble wobble 1, remove wibble wobble commands
         namedPositions = new HashMap<>();
-        if (true) {
-            // NORMAL POSITION
-            addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
-            addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
-            addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
-            addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
-            addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
-            addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.625));
-            addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
-            addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
-            addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
+        // NORMAL POSITION
+        addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
+        addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
+        addNamedPosition("intake-down", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
+        addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
+        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.625));
+        addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.55));
+        addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
+        addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
 
-            //addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
-            //addNamedPosition("hang stage 2", new ArmPosition(0.17, 2, 0, 1.55));
-            addNamedPosition("hang stage 1", new ArmPosition(1.5, 2, 160, 1.55));
+        addNamedPosition("hang stage 1", new ArmPosition(1.5, 2, 160, 1.55));
+        addNamedPosition("hang stage 2", new ArmPosition(1.8, 2, 0, 1.55));
 
-            // These positions are only used in autonomous routines
-            addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
-            addNamedPosition("ascent level 1", new ArmPosition(0.65, 2, 80, 1.55));
-            addNamedPosition("intake ground-high", new ArmPosition(0.17, 68, 160, 1.442, IntakeState.OUTTAKE)
-                    .after(() -> applyRotationPositionUnscaled(-50)));
+        // These positions are only used in autonomous routines
+        addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
+        addNamedPosition("ascent level 1", new ArmPosition(0.65, 2, 80, 1.55));
+        addNamedPosition("intake ground-high", new ArmPosition(0.17, 68, 160, 1.442, IntakeState.OUTTAKE)
+                .after(() -> applyRotationPositionUnscaled(-50)));
 
-            // ???
-            addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
-        } else {
-            // ALTERNATE POSITIONS FOR NO RAISE
-            addNamedPosition("stow", new ArmPosition(0.4, 2, 0, 1.4));
-            addNamedPosition("intake", new ArmPosition(0.4, 67, 0, 1.68, IntakeState.PRIMED_SAMPLE));
-            addNamedPosition("the wibble wobble 1", new ArmPosition(0.38, 67, 0, 1.66));
-            addNamedPosition("the wibble wobble 2", new ArmPosition(0.36, 67, 0, 1.64, IntakeState.PRIMED_SAMPLE));
-            addNamedPosition("intake ground", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.PRIMED_SPECIMEN));
-            addNamedPosition("basket high", new ArmPosition(0.9, 68, 0, 1.625));
-            addNamedPosition("basket low", new ArmPosition(0.9, 2, 0, 1.55));
-            addNamedPosition("specimen high", new ArmPosition(0.7, 2, 0, 1.55));
-            addNamedPosition("specimen low", new ArmPosition(0.65, 2, 0, 1.55));
-
-            //addNamedPosition("hang stage 1", new ArmPosition(0.5, 2, 160, 1.55));
-            //addNamedPosition("hang stage 2", new ArmPosition(0.17, 2, 0, 1.55));
-            addNamedPosition("hang stage 1", new ArmPosition(0.4, 2, 0, 1.4));
-
-            // These positions are only used in autonomous routines
-            addNamedPosition("compact", new ArmPosition(0.2, 0, 0, 0.54, IntakeState.INTAKE));
-            addNamedPosition("intake ground-high", new ArmPosition(0.17, 21, 0, 1.35, IntakeState.OUTTAKE)
-                    .after(() -> applyRotationPositionUnscaled(-50)));
-
-            // ???
-            addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
-        }
+        // ???
+        addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
 
         // Get all the hardware using the names set in the Constants file.
         this.rotationMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_ROTATE);
@@ -167,7 +141,6 @@ public class ArmSubsystem extends SubsystemBase {
         changeControlModeToRunToPosition(this.retractMotor, Constants.ARM_RETRACT_POWER);
 
         // Prepare smart intake cycle command
-        wibbleWobbleCommand = composeWibbleWobbleCommand();
         smartIntakeCommand = composeSmartIntakeCommand();
     }
 
@@ -229,7 +202,7 @@ public class ArmSubsystem extends SubsystemBase {
         applyRaisePosition(position.getRaisePosition());
         applyWristPosition(position.getWristAngle());
         applyIntakeState(position.getIntakeState());
-        applyRetractPositionUnscaled(0);
+        if (position.getRaisePosition() > 0) moveRetractToBottom();
         if (position.getAfter() != null) position.getAfter().run();
     }
 
@@ -271,6 +244,13 @@ public class ArmSubsystem extends SubsystemBase {
         raiseMotor.setTargetPosition(encoder);
     }
 
+    /**
+     * Moves the raise motor to target position 0 or to its current position if it's already below 0.
+     */
+    public void moveRaiseToBottom() {
+        applyRaisePositionUnscaled(Math.min(0, raiseMotor.getCurrentPosition()));
+    }
+
     public void applyWristPosition(double scaled) {
         // The angle for the wrist to point at, on a scale where 1 is up
         applyWristPositionUnscaled(Calculations.scaleToEncoderArmWrist(scaled));
@@ -307,25 +287,18 @@ public class ArmSubsystem extends SubsystemBase {
         retractMotor.setTargetPosition(encoder);
     }
 
+    /**
+     * Moves the retraction motor to target position 0 or to its current position if it's already below 0.
+     */
+    public void moveRetractToBottom() {
+        applyRetractPositionUnscaled(Math.min(0, retractMotor.getCurrentPosition()));
+    }
+
     public Command cycleHangCommand() {
-        return new ConditionalCommand(getRunRotationPowerCommand(1.0), new InstantCommand(() -> applyNamedPosition("hang stage 1")), () -> "hang stage 1".equals(getLastSetPosition()));
-    }
-
-    // Special Actions
-
-    public void doTheWibbleWobble() {
-        wibbleWobbleCommand.schedule(true);
-    }
-
-    private Command composeWibbleWobbleCommand() {
-        CommandBase command = new RepeatCommand(new SequentialCommandGroup(
-                new InstantCommand(() -> applyNamedPosition("the wibble wobble 1", false)),
-                new WaitCommand(250),
-                new InstantCommand(() -> applyNamedPosition("the wibble wobble 2", false)),
-                new WaitCommand(250)
-        ));
-        command.addRequirements(this);
-        return command;
+        return new ConditionalCommand(
+                new InstantCommand(() -> applyNamedPosition("hang stage 2")),
+                new InstantCommand(() -> applyNamedPosition("hang stage 1")),
+                () -> "hang stage 1".equals(getLastSetPosition()));
     }
 
     // Controlling the Intake
@@ -349,9 +322,15 @@ public class ArmSubsystem extends SubsystemBase {
     /**
      * @see #hasSampleInIntake()
      */
+    public boolean doesIntakeHaveSample() {
+        // Because if the intake is not primed, it shouldn't intake.
+        return (intakeState == IntakeState.PRIMED_SAMPLE || intakeState == IntakeState.PRIMED_SPECIMEN) && hasSampleInIntake();
+    }
+    /**
+     * @see #doesIntakeHaveSample()
+     */
     public void intakeIfHasSample() {
-        if ((intakeState == IntakeState.PRIMED_SAMPLE || intakeState == IntakeState.PRIMED_SPECIMEN) && hasSampleInIntake()) {
-            // Because if the servo is not primed, it shouldn't intake.
+        if (doesIntakeHaveSample()) {
             cycleIntakeSmart();
         }
     }
@@ -428,9 +407,18 @@ public class ArmSubsystem extends SubsystemBase {
         extensionMotor.setPower(power);
     }
 
+    /** Also sets retract power to 0. */
     public void setRaisePower(double power) {
+        setRetractPower(0); // avoid motors pulling against each other
         checkControlModeRunWithoutEncoder(raiseMotor);
         raiseMotor.setPower(power);
+    }
+
+    /** Also sets raise power to 0. */
+    public void setRetractPower(double power) {
+        setRaisePower(0); // avoid motors pulling against each other
+        checkControlModeRunWithoutEncoder(retractMotor);
+        retractMotor.setPower(power);
     }
 
     public Command getRunRotationPowerCommand(double power) {
@@ -442,11 +430,19 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public Command getRunRaisePowerCommand(double power) {
-        return new RunMotorPowerCommand(raiseMotor, power);
+        // Lock the retraction motor to go down while the raise motor is active, otherwise they may pull against each other
+        return new ParallelCommandGroup(
+                new RunMotorPowerCommand(raiseMotor, power),
+                new RunCommand(this::moveRetractToBottom)
+        );
     }
 
     public Command getRunRetractPowerCommand(double power) {
-        return new RunMotorPowerCommand(retractMotor, power);
+        // Lock the raise motor to go down while the retraction motor is active, otherwise they may pull against each other
+        return new ParallelCommandGroup(
+                new RunMotorPowerCommand(retractMotor, power),
+                new RunCommand(this::moveRaiseToBottom)
+        );
     }
 
     class RunMotorPowerCommand implements Command {
@@ -588,6 +584,15 @@ public class ArmSubsystem extends SubsystemBase {
         return rotationMotor.getTargetPosition();
     }
 
+    /** @return Whether the rotation motor is at its target position (default threshold: {@value Constants#ROTATION_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isRotationAtTargetPosition() {
+        return isMotorAtTargetPosition(rotationMotor, Constants.ROTATION_TARGET_THRESHOLD);
+    }
+    /** @return Whether the rotation motor is at its target position (default threshold: {@value Constants#ROTATION_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isRotationAtTargetPosition(int threshold) {
+        return isMotorAtTargetPosition(rotationMotor, threshold);
+    }
+
 
     /** @return The position that the extension has extended to, on a scale of inches */
     public double getExtensionPosition() {
@@ -607,6 +612,15 @@ public class ArmSubsystem extends SubsystemBase {
     /** @return The target position that the extension is trying to extend to, in encoder ticks */
     public int getExtensionTargetPositionUnscaled() {
         return extensionMotor.getTargetPosition();
+    }
+
+    /** @return Whether the extension motor is at its target position (default threshold: {@value Constants#EXTENSION_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isExtensionAtTargetPosition() {
+        return isMotorAtTargetPosition(extensionMotor, Constants.EXTENSION_TARGET_THRESHOLD);
+    }
+    /** @return Whether the extension motor is at its target position (default threshold: {@value Constants#EXTENSION_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isExtensionAtTargetPosition(int threshold) {
+        return isMotorAtTargetPosition(extensionMotor, threshold);
     }
 
 
@@ -630,6 +644,15 @@ public class ArmSubsystem extends SubsystemBase {
         return raiseMotor.getTargetPosition();
     }
 
+    /** @return Whether the raise motor is at its target position (default threshold: {@value Constants#RAISE_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isRaiseAtTargetPosition() {
+        return isMotorAtTargetPosition(raiseMotor, Constants.RAISE_TARGET_THRESHOLD);
+    }
+    /** @return Whether the raise motor is at its target position (default threshold: {@value Constants#RAISE_TARGET_THRESHOLD} encoder ticks) */
+    public boolean isRaiseAtTargetPosition(int threshold) {
+        return isMotorAtTargetPosition(raiseMotor, threshold);
+    }
+
 
     /** @return The angle that the wrist is pointing at, on a scale where 1 is up */
     public double getWristPosition() {
@@ -648,6 +671,11 @@ public class ArmSubsystem extends SubsystemBase {
 
     public IntakeState getIntakeState() {
         return intakeState;
+    }
+
+
+    private static boolean isMotorAtTargetPosition(DcMotor motor, int threshold) {
+        return Math.abs(motor.getCurrentPosition() - motor.getTargetPosition()) <= threshold;
     }
 
     // Hardware Variables
@@ -689,8 +717,8 @@ public class ArmSubsystem extends SubsystemBase {
     public Action yieldForRotationTarget() {
         return yieldForRotationTarget(Constants.ROTATION_TARGET_THRESHOLD);
     }
-    public Action yieldForRotationTarget(double threshold) {
-        return new YieldForMotorTarget(getRotationMotor(), threshold);
+    public Action yieldForRotationTarget(int threshold) {
+        return new YieldForMotorTarget(rotationMotor, threshold);
     }
 
     /**
@@ -700,35 +728,29 @@ public class ArmSubsystem extends SubsystemBase {
     public Action yieldForRaiseTarget() {
         return yieldForRaiseTarget(Constants.RAISE_TARGET_THRESHOLD);
     }
-    public Action yieldForRaiseTarget(double threshold) {
-        return new YieldForMotorTarget(getRaiseMotor(), threshold);
+    public Action yieldForRaiseTarget(int threshold) {
+        return new YieldForMotorTarget(raiseMotor, threshold);
     }
 
     /**
      * Represents a Road Runner Action that yields until a motor has reached its target position.
      * Used exclusively for Road Runner autonomous routines.
-     * <p>Usually, inner classes (such as YieldForMotorTarget) must be tied to an instance of the outer class but may
-     * use variables/methods from that outer class. {@code static class} bypasses this, allowing you to create instances
-     * of the inner class without an instance of the outer class.</p>
-     * <p>i.e. If this class were not static, then to create a new instance, you may do something like:</p>
-     * <p>{@code new ArmSubsystem().new YieldForMotorTarget()}</p>
-     * However, because it is static, you can instead just do:
-     * <p>{@code new ArmSubsystem.YieldForMotorTarget()}</p>
+     * <p>See "Internal Classes.txt" for more info on internal classes.</p>
      * <p>Note: Because new YieldForMotorTargets are only ever created in its outer class (this class), the fact that
-     * it's static doesn't actually change anything. But now you know what static classes are!</p>
+     * it's static doesn't actually accomplish anything. But now you know what static classes are!</p>
      */
     static class YieldForMotorTarget implements Action {
         private final DcMotor motor;
-        private final double threshold;
+        private final int threshold;
 
-        public YieldForMotorTarget(DcMotor motor, double threshold) {
+        public YieldForMotorTarget(DcMotor motor, int threshold) {
             this.motor = motor;
             this.threshold = threshold;
         }
 
         @Override
         public boolean run(@NotNull TelemetryPacket packet) {
-            return Math.abs(motor.getCurrentPosition() - motor.getTargetPosition()) > threshold; // If true, this action will run again
+            return !isMotorAtTargetPosition(motor, threshold); // If true, this action will run again
         }
     }
 }
