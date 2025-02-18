@@ -35,11 +35,10 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
-import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
-import org.firstinspires.ftc.teamcode.helper.QueryAlliance;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
@@ -121,7 +120,7 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
 
         // Get alliance
         // This must be done last, as it waits for user input (which could take until the end of init)
-        drive.setIsBlueAlliance(QueryAlliance.query(this));
+        drive.setIsBlueAlliance(DriverPrompter.queryAlliance(this));
     }
 
     private void markToNotZeroWithPose() {

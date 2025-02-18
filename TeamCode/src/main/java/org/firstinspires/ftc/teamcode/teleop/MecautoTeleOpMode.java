@@ -38,7 +38,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import org.firstinspires.ftc.teamcode.Constants;
-import org.firstinspires.ftc.teamcode.helper.QueryAlliance;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.*;
 
@@ -302,7 +302,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
 
         // Get Alliance
         // This must be done last, as it waits for user input (which could take until the end of init)
-        driveSubsystem.setIsBlueAlliance(QueryAlliance.query(this));
+        driveSubsystem.setIsBlueAlliance(DriverPrompter.queryAlliance(this));
     }
 
 
