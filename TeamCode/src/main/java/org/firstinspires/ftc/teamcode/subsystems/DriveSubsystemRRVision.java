@@ -15,6 +15,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
 import org.firstinspires.ftc.teamcode.helper.localization.DriveLocalizer;
@@ -86,7 +87,7 @@ public class DriveSubsystemRRVision extends SubsystemBase {
     public final LazyImu lazyImu;
 
     public final Localizer localizer;
-    public Pose2d pose; // TODO: better way to preserve heading between auto and teleop
+    public Pose2d pose;
 
     private final LinkedList<Pose2d> poseHistory = new LinkedList<>();
 
@@ -130,11 +131,6 @@ public class DriveSubsystemRRVision extends SubsystemBase {
                 new ProfileAccelConstraint(PARAMS.minProfileAccel, PARAMS.maxProfileAccel);
 
         // Initialize
-        Vector2d newPosition = DriveSubsystem.zeroDriveOnInit ? pose.position : this.pose.position;
-        Rotation2d newHeading = DriveSubsystem.zeroHeadingOnInit ? pose.heading : this.pose.heading;
-        this.pose = new Pose2d(newPosition, newHeading);
-        DriveSubsystem.zeroDriveOnInit = true;
-        DriveSubsystem.zeroHeadingOnInit = true;
 
         LynxFirmware.throwIfModulesAreOutdated(hardwareMap);
 
@@ -160,6 +156,15 @@ public class DriveSubsystemRRVision extends SubsystemBase {
         lazyImu = new LazyImu(hardwareMap, Constants.NAME_IMU, new RevHubOrientationOnRobot(
                 PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
 
+        // Preserve previous heading
+        Vector2d newPosition = pose.position;
+        if (!ResetZeroState.shouldZeroDrive() && ResetZeroState.getPrevDrivePos() != null) newPosition = ResetZeroState.getPrevDrivePos();
+        double newHeading = pose.heading.toDouble();
+        if (!ResetZeroState.shouldZeroHeading() && ResetZeroState.getPrevHeading() != null) newHeading = ResetZeroState.getPrevHeading();
+
+        this.pose = new Pose2d(newPosition, newHeading);
+        zeroDriverHeading(newHeading);
+
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
         switch (localizer) {
@@ -174,9 +179,6 @@ public class DriveSubsystemRRVision extends SubsystemBase {
         }
 
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
-
-        // TODO: better way to preserve heading between auto and teleop
-        zeroDriverHeading(this.pose.heading.toDouble());
     }
 
     public void setIsBlueAlliance(boolean isBlueAlliance) {

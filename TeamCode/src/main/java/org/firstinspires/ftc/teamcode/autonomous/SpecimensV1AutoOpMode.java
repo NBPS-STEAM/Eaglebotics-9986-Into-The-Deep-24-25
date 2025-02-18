@@ -38,6 +38,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 
@@ -114,7 +115,7 @@ public class SpecimensV1AutoOpMode extends LinearOpMode {
 
 
         // Mark subsystems to not zero again once the next opmode begins (teleop)
-        ResetZeroState.markToNotZeroOnInit(false);
+        ResetZeroState.markToNotZeroOnInit();
 
         // Execute autonomous routine
         Actions.runBlocking(path);

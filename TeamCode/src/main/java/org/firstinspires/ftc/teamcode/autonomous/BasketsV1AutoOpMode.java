@@ -32,10 +32,14 @@ package org.firstinspires.ftc.teamcode.autonomous;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.*;
 import com.acmerobotics.roadrunner.ftc.Actions;
+import com.arcrobotics.ftclib.command.CommandOpMode;
+import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
+import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 
@@ -74,7 +78,7 @@ import java.util.Arrays;
 
 @Config
 @Autonomous(name="Baskets V1 Auto-OpMode (3 samples)", group="Autonomous OpMode")
-public class BasketsV1AutoOpMode extends LinearOpMode {
+public class BasketsV1AutoOpMode extends CommandOpMode {
 
     // Hardware Variables
     private MecanumDriveTune1 drive;
@@ -83,7 +87,7 @@ public class BasketsV1AutoOpMode extends LinearOpMode {
 
     // This is run when the "INIT" button is pressed on the Driver Station.
     @Override
-    public void runOpMode() {
+    public void initialize() {
         // Reset zero state; autonomous opmodes should always zero the robot
         ResetZeroState.resetZeroState();
         // Initialize MecanumDrive at a particular pose
@@ -156,15 +160,19 @@ public class BasketsV1AutoOpMode extends LinearOpMode {
                 .afterTime(0.0, () -> armSubsystem.setRotationPower(0.0))
                 .build();
 
-        // Wait until start
-        waitForStart();
-        if (isStopRequested()) return;
+        // Wait until start (remnant from before this was command-based)
+        //waitForStart();
+        //if (isStopRequested()) return;
 
-
-        // Mark subsystems to not zero again once the next opmode begins (teleop)
-        ResetZeroState.markToNotZeroOnInit(false);
 
         // Execute autonomous routine
-        Actions.runBlocking(path);
+        new RoadRunnerCommand(path).schedule(true);
+
+        // Mark subsystems to not zero again once the next opmode begins (teleop)
+        new Trigger(this::isStopRequested).whenActive(this::markToNotZeroWithPose);
+    }
+
+    private void markToNotZeroWithPose() {
+        ResetZeroState.markToNotZeroOnInit(drive.pose.position, drive.pose.heading.toDouble());
     }
 }

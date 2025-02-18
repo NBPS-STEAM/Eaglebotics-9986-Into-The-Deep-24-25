@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.helper.NullColorRangeSensor;
@@ -26,11 +27,6 @@ import java.util.Set;
  * applying set positions for the arm's extension, rotation, wrist, and intake.
  */
 public class ArmSubsystem extends SubsystemBase {
-
-    // Static variables
-    // Static variables aren't reset between opmodes, only when the robot turns off.
-    // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
-    public static boolean zeroOnInit = true;
 
     // Default motor power
     private final double rotationPower;
@@ -127,13 +123,12 @@ public class ArmSubsystem extends SubsystemBase {
         this.retractMotor.setZeroPowerBehavior(Constants.ZEROPOWER_ARM_RETRACT);
 
         // Zero unless told not to
-        if (zeroOnInit) {
+        if (ResetZeroState.shouldZeroArm()) {
             this.rotationMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.extensionMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.raiseMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.retractMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         }
-        zeroOnInit = true;
 
         changeControlModeToRunToPosition(this.rotationMotor, rotationPower);
         changeControlModeToRunToPosition(this.extensionMotor, extensionPower);

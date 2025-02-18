@@ -34,14 +34,13 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.InstantCommand;
-import com.arcrobotics.ftclib.command.RunCommand;
+import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.helper.QueryAlliance;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
@@ -110,8 +109,8 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
 
         // Schedule commands
 
-        // Mark subsystems to not zero again once the next opmode (teleop) begins
-        new InstantCommand(() -> ResetZeroState.markToNotZeroOnInit(false)).schedule();
+        // When this opmode is stopped, mark subsystems to not zero again once the next opmode (teleop) begins
+        new Trigger(this::isStopRequested).whenActive(this::markToNotZeroWithPose);
 
         // Execute autonomous routine
         new RoadRunnerCommand(path).schedule(false);
@@ -123,6 +122,10 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
         // Get alliance
         // This must be done last, as it waits for user input (which could take until the end of init)
         drive.setIsBlueAlliance(QueryAlliance.query(this));
+    }
+
+    private void markToNotZeroWithPose() {
+        ResetZeroState.markToNotZeroOnInit(drive.pose.position, drive.pose.heading.toDouble());
     }
 
     private Action getBasketsV2(DriveSubsystemRRVision drive, ArmSubsystem armSubsystem) {

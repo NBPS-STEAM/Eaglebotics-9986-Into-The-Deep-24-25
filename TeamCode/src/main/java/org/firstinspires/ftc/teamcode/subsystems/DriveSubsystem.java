@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
 
 /**
@@ -20,12 +21,6 @@ import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
  */
 public class DriveSubsystem extends SubsystemBase {
 
-    // Static variables
-    // Static variables aren't reset between opmodes, only when the robot turns off.
-    // This variable is used by the autonomous routine to prevent the robot from resetting after auto.
-    public static boolean zeroDriveOnInit = true;
-    public static boolean zeroHeadingOnInit = true;
-
     // Private instance variables (private variables that are in an instance of this class)
     private final DcMotor frontLeftMotor; // 'final' means that this variable will never be set again after it is set in the constructor.
     private final DcMotor frontRightMotor;
@@ -34,6 +29,7 @@ public class DriveSubsystem extends SubsystemBase {
     private final IMU imu;
 
     private double powerMultiplier;
+    private double headingOffset;
     private boolean isFieldCentric = true;
 
 
@@ -70,18 +66,23 @@ public class DriveSubsystem extends SubsystemBase {
         this.imu.initialize(parameters);
 
         // Zero unless told not to
-        if (zeroDriveOnInit) {
+        if (ResetZeroState.shouldZeroDrive()) {
             this.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             this.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         }
-        zeroDriveOnInit = true;
 
-        if (zeroHeadingOnInit) {
+        if (ResetZeroState.shouldZeroHeading()) {
             zeroHeading();
+        } else {
+            // Preserve previous heading
+            Double prevHeading = ResetZeroState.getPrevHeading();
+            if (prevHeading != null) {
+                zeroHeading();
+                headingOffset = prevHeading;
+            }
         }
-        zeroHeadingOnInit = true;
 
         frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -99,11 +100,9 @@ public class DriveSubsystem extends SubsystemBase {
         drive(-gamepad.left_stick_y, -gamepad.left_stick_x, gamepad.right_stick_x);
     }
     public void drive(double axial, double lateral, double yaw) {
-        double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-
         QuadMotorValues<Double> drivePower;
         if (isFieldCentric) {
-            drivePower = Calculations.mecanumDriveFieldCentric(axial, lateral, yaw, heading);
+            drivePower = Calculations.mecanumDriveFieldCentric(axial, lateral, yaw, getHeading(AngleUnit.RADIANS));
         } else {
             drivePower = Calculations.mecanumDriveRobotCentric(axial, lateral, yaw);
         }
@@ -170,6 +169,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Method to zero IMU heading
     public void zeroHeading() {
         imu.resetYaw();
+        headingOffset = 0;
     }
 
 
@@ -206,7 +206,7 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     public double getHeading(AngleUnit angleUnit) {
-        return imu.getRobotYawPitchRollAngles().getYaw(angleUnit);
+        return imu.getRobotYawPitchRollAngles().getYaw(angleUnit) + headingOffset;
     }
 
     public double getPowerMultiplier() {
