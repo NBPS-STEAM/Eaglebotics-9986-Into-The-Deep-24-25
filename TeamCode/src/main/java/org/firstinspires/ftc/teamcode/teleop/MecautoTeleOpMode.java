@@ -105,22 +105,24 @@ import java.util.function.DoubleSupplier;
  * Start button         |   Manually forward retraction motor (tighten for going down)
  * Select button        |   Manually reverse retraction motor (release for going up)
  *
- * The controller rumbles while an AprilTag is visible to the robot. This is required to start autonomous driving.*
+ * The controller rumbles while an AprilTag is visible to the robot. This is required to start autonomous driving.
  *
  *
  * Controller 2 (arm driver):
  * South (A/X) button   |   Move arm to 'stow' set position
+ * Left stick button    |   Move arm to 'compact' set position (good for dealing with rotation encoder drift)
  * West (X/□) button    |   Move arm to 'intake' set position
+ * Right stick button   |   Move arm to 'intake vertical' set position
  * East (B/○) button    |   Intelligently cycle intake states
- * North (Y/Δ) button   |   Move arm to 'intake-down' set position
- * Left bumper          |   Start outtake (open claw)
- * Right bumper         |   Start intake (close claw)
+ * North (Y/Δ) button   |   Move arm down for intaking
+ * Left bumper          |   Stop intake
+ * Right bumper         |   Start outtake
  * Left trigger         |   Unlock arm subsystem (set positions cannot be applied while locked)
- * Right trigger        |   Move arm to 'intake ground' set position
+ * Right trigger        |   Move arm to 'intake ground' set position (or 'intake ground-far' in specimen mode)
  * Left stick up        |   Move arm to 'basket high' set position (locks arm subsystem)
  * Left stick down      |   Move arm to 'basket low' set position (locks arm subsystem)
- * Right stick up       |   Move arm to 'specimen high' set position (locks arm subsystem)
- * Right stick down     |   Move arm to 'specimen low' set position (locks arm subsystem)
+ * Right stick up       |   Move arm to 'specimen high' set position
+ * Right stick down     |   Move arm to 'specimen low' set position
  *
  * D-pad up button      |   Manually extend arm up
  * D-pad down button    |   Manually extend arm down
@@ -129,8 +131,8 @@ import java.util.function.DoubleSupplier;
  * Start button         |   Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2' position
  * Select + d-pad up    |   Manually raise arm up
  * Select + d-pad down  |   Manually raise arm down
- * Select + d-pad right |   Manually increase wrist position offset TODO: which way is up?
- * Select + d-pad left  |   Manually decrease wrist position offset
+ * Select + d-pad right |   Manually decrease wrist position offset (moves the wrist UP)
+ * Select + d-pad left  |   Manually increase wrist position offset (moves the wrist DOWN)
  * Select + left bumper |   Zero (reset) extension motor
  * Select + right bumper|   Zero (reset) rotation motor
  * Select + start button|   Zero (reset) raise motor
@@ -207,6 +209,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
         Command driveToBasketCommand = driveSubsystem.getDriveToBasketCommand(armSubsystem);
 
         // Automatically drive and score in high basket (an AprilTag must be visible)
+        //TODO: FIX
         getStickTrigger(() -> baseGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true)
                 .and(new Trigger(driveSubsystem::didLastPoseEstUseVision))
                 .and(new Trigger(() -> !driveToBasketCommand.isScheduled()))
@@ -231,25 +234,27 @@ public class MecautoTeleOpMode extends CommandOpMode {
         // Apply Set Positions
         // These named set positions are defined in the ArmSubsystem class.
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("compact"), Button.LEFT_STICK_BUTTON); // Move arm to 'compact' set position (good for dealing with rotation encoder drift)
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
+        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake vertical"), Button.RIGHT_STICK_BUTTON); // Move arm to 'intake vertical' set position
         bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
-        bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake-down"), Button.Y); // Move arm to 'intake-down' set position
+        combineButtons(armGamepad, Button.Y).whenActive(armSubsystem.intakeDownCommand()); // Move arm down for intaking
 
-        bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake ground")); // Move arm to 'intake ground' set position
+        // The right trigger is bound at the end of init because its command varies depending on user input during init.
 
         bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER), true, () -> armSubsystem.lockSetPosition(false)); // Unlock arm subsystem (set positions cannot be applied while locked)
 
         bindToStick(() -> armGamepad.getLeftY(), true, () -> armSubsystem.applyNamedPosition("basket high", true, true)); // Move arm to 'basket high' set position (locks arm subsystem)
         bindToStick(() -> armGamepad.getLeftY(), false, () -> armSubsystem.applyNamedPosition("basket low", true, true)); // Move arm to 'basket low' set position (locks arm subsystem)
-        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high", true, true)); // Move arm to 'specimen high' set position (locks arm subsystem)
-        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low", true, true)); // Move arm to 'specimen low' set position (locks arm subsystem)
+        bindToStick(() -> armGamepad.getRightY(), false, () -> armSubsystem.applyNamedPosition("specimen high")); // Move arm to 'specimen high' set position
+        bindToStick(() -> armGamepad.getRightY(), true, () -> armSubsystem.applyNamedPosition("specimen low")); // Move arm to 'specimen low' set position
 
         buttonButNot(armGamepad, Button.START, Button.BACK)
                 .whenActive(armSubsystem.cycleHangCommand()); // Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2' position
 
         // Intake Controls
-        bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.LEFT_BUMPER, Button.BACK); // Start outtake (open claw)
-        bindToButtonButNot(armGamepad, armSubsystem::startIntake, Button.RIGHT_BUMPER, Button.BACK); // Start intake (close claw)
+        bindToButtonButNot(armGamepad, armSubsystem::stopIntake, Button.LEFT_BUMPER, Button.BACK); // Stop intake
+        bindToButtonButNot(armGamepad, armSubsystem::startOuttake, Button.RIGHT_BUMPER, Button.BACK); // Start outtake
 
         // Zero Arm Motors
         bindToButtons(armGamepad, armSubsystem::zeroExtensionMotor, Button.LEFT_BUMPER, Button.BACK); // Zero (reset) extension motor
@@ -275,11 +280,11 @@ public class MecautoTeleOpMode extends CommandOpMode {
         combineButtons(armGamepad, Button.DPAD_DOWN, Button.BACK) // Manually raise arm down
                 .whileActiveOnce(armSubsystem.getRunRaisePowerCommand(-Constants.ARM_RAISE_POWER_MANUAL));
 
-        combineButtons(armGamepad, Button.DPAD_RIGHT, Button.BACK) // Manually increase wrist position offset
-                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(Constants.ARM_WRIST_RATE_MANUAL));
-
-        combineButtons(armGamepad, Button.DPAD_LEFT, Button.BACK) // Manually decrease wrist position offset
+        combineButtons(armGamepad, Button.DPAD_RIGHT, Button.BACK) // Manually decrease wrist position offset (moves the wrist UP)
                 .whileActiveContinuous(() -> armSubsystem.changeWristOffset(-Constants.ARM_WRIST_RATE_MANUAL));
+
+        combineButtons(armGamepad, Button.DPAD_LEFT, Button.BACK) // Manually increase wrist position offset (moves the wrist DOWN)
+                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(Constants.ARM_WRIST_RATE_MANUAL));
 
 
         // Default/Automatic Commands
@@ -294,19 +299,49 @@ public class MecautoTeleOpMode extends CommandOpMode {
         new Trigger(driveSubsystem::didLastPoseEstUseVision).whileActiveOnce(new RumbleControllerCommand(baseGamepad.gamepad));
 
         // When the intake has a sample, cycle intake intelligently
-        new Trigger(armSubsystem::doesIntakeHaveSample).whenActive(armSubsystem::cycleIntakeSmart);
+        new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::cycleIntakeSmart);
 
         // At all times, update the telemetry log
         driveSubsystem.new TelemetryLoggerCommand(telemetry).schedule(false);
 
 
-        // Get Alliance
+        // Driver Station
+
+        // Wait until camera is ready (this will make it obvious if it doesn't activate)
+        telemetry.addLine("Waiting for Camera...");
+        telemetry.update();
+        sleepForVisionPortal();
+        telemetry.addData("Camera", "Ready!").setRetained(true);
+        telemetry.update();
+
+        // Get alliance
         // This must be done last, as it waits for user input (which could take until the end of init)
         driveSubsystem.setIsBlueAlliance(DriverPrompter.queryAlliance(this));
+
+        telemetry.addLine("Mecauto Teleop Ready!");
+        telemetry.update();
+
+        // Choose right trigger function
+        boolean isSpecimenMode = DriverPrompter.queryBoolean(this, false,
+                "Use specimen mode?", "Specimen mode");
+        String rtPosition;
+        if (isSpecimenMode) {
+            rtPosition = "intake ground-far";
+            armSubsystem.setSmartIntakeStowPosition("specimen low");
+        } else {
+            rtPosition = "intake ground";
+        }
+        bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition(rtPosition)); // Move arm to 'intake ground' set position (or 'intake ground-far' in specimen mode)
     }
 
 
     // Helper Methods
+
+    private void sleepForVisionPortal() {
+        while (!visionPortalSubsystem.isVisionPortalStreaming()) {
+            sleep(50);
+        }
+    }
 
     /**
      * Bind an action to run through an instant command when one or more buttons of a gamepad are pressed.

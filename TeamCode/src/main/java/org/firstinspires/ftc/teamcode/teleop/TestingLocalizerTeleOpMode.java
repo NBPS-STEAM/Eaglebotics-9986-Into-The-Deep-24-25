@@ -29,15 +29,20 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
+import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
+import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
 import org.firstinspires.ftc.teamcode.subsystems.TestingSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -71,6 +76,16 @@ import org.firstinspires.ftc.teamcode.subsystems.TestingSubsystem;
  * Select + right bumper|   (Slot 2) Load the stored state of and freeze the selected hardware device
  *
  *
+ * Controller 2:
+ * Left stick           |   Drive robot (strafe)
+ * Right stick          |   Drive robot (turn)
+ * D-pad down button    |   Zero (reset) robot heading direction
+ * Left bumper          |   Set alliance for localization: Blue Alliance
+ * Right bumper         |   Set alliance for localization: Red Alliance
+ * Select button        |   Set vision localization method: Default Vision-Only
+ * Start button         |   Set vision localization method: Custom Gyro-Vision
+ *
+ *
  * Tips:
  * If you don't understand what a particular method does, then hover your mouse over it to get some info and a short description.
  * If you click on a variable/method, then all uses of it in the file will be highlighted.
@@ -79,51 +94,78 @@ import org.firstinspires.ftc.teamcode.subsystems.TestingSubsystem;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
-@TeleOp(name="Testing Tele-OpMode", group="Testing OpMode")
-public class TestingTeleOpMode extends CommandOpMode {
+@TeleOp(name="Testing+Localizer Tele-OpMode", group="Testing OpMode")
+public class TestingLocalizerTeleOpMode extends CommandOpMode {
 
-    // Hardware Variables
-    private GamepadEx gamepad;
+    // Variables
+    private GamepadEx gamepadEx1;
+    private GamepadEx gamepadEx2;
     private TestingSubsystem testingSubsystem;
+    private DriveSubsystemRRVision driveSubsystem;
+    private VisionPortalSubsystem visionPortalSubsystem;
 
 
     // This is run when the "INIT" button is pressed on the Driver Station.
     @Override
     public void initialize() {
         // Initialize hardware variables
-        gamepad = new GamepadEx(gamepad1);
+        gamepadEx1 = new GamepadEx(gamepad1);
+        gamepadEx2 = new GamepadEx(gamepad2);
+
         testingSubsystem = new TestingSubsystem(hardwareMap, telemetry);
 
-        // EMERGENCY GAMEPAD 2 DRIVING
-        //DriveSubsystem driveSubsystem = new DriveSubsystem(hardwareMap);
-        //driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(gamepad2), driveSubsystem));
+        ResetZeroState.resetZeroState();
+        visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, true);
+        driveSubsystem = new DriveSubsystemRRVision(hardwareMap, visionPortalSubsystem,
+                Localizers.ENCODERS_WITH_VISION, new Pose2d(0, 0, 0));
+
+        driveSubsystem.setMediumSpeed();
 
 
         // Controller bindings
 
         // Device Selection
 
-        bindTo(Button.DPAD_UP, () -> testingSubsystem.changeSelection(-1)); // Move up the list to select a hardware device (motor/servo)
-        bindTo(Button.DPAD_DOWN, () -> testingSubsystem.changeSelection(1)); // Move down the list to select a hardware device (motor/servo)
-        bindTo(Button.A, testingSubsystem::activateSelected); // Activate the selected hardware device
-        bindTo(Button.B, testingSubsystem::deactivateSelected); // Deactivate the currently selected hardware device
+        bindTo(gamepadEx1, Button.DPAD_UP, () -> testingSubsystem.changeSelection(-1)); // Move up the list to select a hardware device (motor/servo)
+        bindTo(gamepadEx1, Button.DPAD_DOWN, () -> testingSubsystem.changeSelection(1)); // Move down the list to select a hardware device (motor/servo)
+        bindTo(gamepadEx1, Button.A, testingSubsystem::activateSelected); // Activate the selected hardware device
+        bindTo(gamepadEx1, Button.B, testingSubsystem::deactivateSelected); // Deactivate the currently selected hardware device
 
         // Device Control
 
-        bindTo(Button.X, testingSubsystem::toggleFrozen); // Toggle freezing the selected hardware device in place
-        bindTo(Button.Y, testingSubsystem::zeroSelected); // Zero the selected hardware device
-        bindTo(Button.LEFT_BUMPER, () -> testingSubsystem.storeStateSelected(0)); // (Slot 1) Store the state of the selected hardware device (position/power)
-        bindTo(Button.RIGHT_BUMPER, () -> testingSubsystem.loadStateSelected(0)); // (Slot 1) Load the stored state of and freeze the selected hardware device
-        bindToTwo(Button.BACK, Button.LEFT_BUMPER, () -> testingSubsystem.storeStateSelected(1)); // (Slot 2) Store the state of the selected hardware device (position/power)
-        bindToTwo(Button.BACK, Button.RIGHT_BUMPER, () -> testingSubsystem.loadStateSelected(1)); // (Slot 2) Load the stored state of and freeze the selected hardware device
+        bindTo(gamepadEx1, Button.X, testingSubsystem::toggleFrozen); // Toggle freezing the selected hardware device in place
+        bindTo(gamepadEx1, Button.Y, testingSubsystem::zeroSelected); // Zero the selected hardware device
+        bindTo(gamepadEx1, Button.LEFT_BUMPER, () -> testingSubsystem.storeStateSelected(0)); // (Slot 1) Store the state of the selected hardware device (position/power)
+        bindTo(gamepadEx1, Button.RIGHT_BUMPER, () -> testingSubsystem.loadStateSelected(0)); // (Slot 1) Load the stored state of and freeze the selected hardware device
+        bindToTwo(gamepadEx1, Button.BACK, Button.LEFT_BUMPER, () -> testingSubsystem.storeStateSelected(1)); // (Slot 2) Store the state of the selected hardware device (position/power)
+        bindToTwo(gamepadEx1, Button.BACK, Button.RIGHT_BUMPER, () -> testingSubsystem.loadStateSelected(1)); // (Slot 2) Load the stored state of and freeze the selected hardware device
 
+        // Drive/Localizer Commands
+
+        bindTo(gamepadEx2, Button.DPAD_DOWN, driveSubsystem::zeroDriverHeading); // Zero (reset) robot heading direction
+
+        bindTo(gamepadEx2, Button.LEFT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(true)); // Set alliance for localization: Blue Alliance
+        bindTo(gamepadEx2, Button.RIGHT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(false)); // Set alliance for localization: Red Alliance
+
+        bindTo(gamepadEx2, Button.BACK, () -> visionPortalSubsystem.enableGyroLocalizer(null)); // Set vision localization method: Default Vision-Only
+        bindTo(gamepadEx2, Button.START, () -> visionPortalSubsystem.enableGyroLocalizer(driveSubsystem)); // Set vision localization method: Custom Gyro-Vision
+
+        // Telemetry
+
+        testingSubsystem.addExtraData("Pose x", () -> driveSubsystem.pose.position.x);
+        testingSubsystem.addExtraData("Pose y", () -> driveSubsystem.pose.position.y);
+        testingSubsystem.addExtraData("Pose heading (degrees)", () -> Math.toDegrees(driveSubsystem.pose.heading.toDouble()));
+        testingSubsystem.addExtraData("Alliance", () -> driveSubsystem.getIsBlueAlliance() ? "Blue Alliance" : "Red Alliance");
+        testingSubsystem.addExtraData("Vision localization method", () -> visionPortalSubsystem.getGyroLocalizer() == null ? "Vision-Only" : "Gyro-Vision");
 
         // Default/Repeating Commands
         // Read here for more info on the different types of commands: https://docs.ftclib.org/ftclib/command-base/command-system/convenience-commands
 
-        new RunCommand(() -> testingSubsystem.moveSelected(gamepad.getLeftY())).schedule(false); // Move the selected hardware device (set power or position depending on device)
-        new RunCommand(() -> testingSubsystem.offsetSelected(gamepad.getRightY())).schedule(false); // Offset the selected hardware device (adjust power or position)
+        new RunCommand(() -> testingSubsystem.moveSelected(gamepadEx1.getLeftY())).schedule(false); // Move the selected hardware device (set power or position depending on device)
+        new RunCommand(() -> testingSubsystem.offsetSelected(gamepadEx1.getRightY())).schedule(false); // Offset the selected hardware device (adjust power or position)
         new RunCommand(testingSubsystem::reportTelemetry).schedule(false); // Report telemetry
+
+        driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(gamepadEx2), driveSubsystem)); // Drive using the gamepad
     }
 
 
@@ -132,21 +174,14 @@ public class TestingTeleOpMode extends CommandOpMode {
     /**
      * Bind an action to run through an instant command when a button is pressed on the gamepad.
      */
-    public void bindTo(Button button, Runnable action) {
+    public void bindTo(GamepadEx gamepad, Button button, Runnable action) {
         gamepad.getGamepadButton(button).whenPressed(new InstantCommand(action));
     }
 
     /**
      * Bind an action to run through an instant command when two buttons are pressed on the gamepad.
      */
-    public void bindToTwo(Button button1, Button button2, Runnable action) {
+    public void bindToTwo(GamepadEx gamepad, Button button1, Button button2, Runnable action) {
         gamepad.getGamepadButton(button1).and(gamepad.getGamepadButton(button2)).whenActive(new InstantCommand(action));
-    }
-
-    private static double squareSigned(double value) {
-        // The joystick value is on the interval [-1, 1] (between -1 and 1).
-        // Squaring the joystick value results in a value that is also within [-1, 1] but curves to be smaller as it approaches 0.
-        // This makes precise adjustments easier without giving up the ability to reach high values.
-        return value * value * (value < 0 ? -1 : 1);
     }
 }

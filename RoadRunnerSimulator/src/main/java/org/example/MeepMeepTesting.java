@@ -38,10 +38,19 @@ public class MeepMeepTesting {
         System.setProperty("sun.java2d.opengl", "true");
         MeepMeep meepMeep = new MeepMeep(800);
 
+        RoadRunnerBotEntity myBot = new DefaultBotBuilder(meepMeep)
+                // Set bot constraints: maxVel, maxAccel, maxAngVel, maxAngAccel, track width
+                .setConstraints(50, 50, Math.PI * 1.2, Math.PI * 1.2, 12)
+                .build();
+
+        myBot.runAction(myBot.getDrive().actionBuilder(legacyTransform2(new Pose2d(0, 0, 0)))
+                .build());
+
         meepMeep.setBackground(MeepMeep.Background.FIELD_INTO_THE_DEEP_JUICE_DARK)
                 .setDarkMode(true)
                 .setBackgroundAlpha(0.95f)
-                .addEntity(simBasketsV2(meepMeep))
+                .addEntity(myBot)
+                //.addEntity(simBasketsV2(meepMeep))
                 //.addEntity(simSpecimensV2(meepMeep))
                 .start();
     }

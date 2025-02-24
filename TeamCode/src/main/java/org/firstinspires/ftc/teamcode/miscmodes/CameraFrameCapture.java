@@ -58,7 +58,7 @@ import java.util.Locale;
  * In OnBot Java, use "Add File" to add this OpMode from the list of Samples.
  */
 
-@TeleOp(name = "Camera Frame Capture", group = "Concept")
+@TeleOp(name = "Camera Frame Capture", group = "Vision Config")
 public class CameraFrameCapture extends LinearOpMode
 {
     /*

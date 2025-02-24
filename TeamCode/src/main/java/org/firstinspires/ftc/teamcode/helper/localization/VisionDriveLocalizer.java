@@ -1,8 +1,7 @@
 package org.firstinspires.ftc.teamcode.helper.localization;
 
 import com.acmerobotics.roadrunner.*;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.teamcode.helper.Geo;
 import org.firstinspires.ftc.teamcode.roadrunner.Localizer;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
 import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
@@ -54,19 +53,19 @@ public class VisionDriveLocalizer implements Localizer {
         return robotPoseAsAlliance(vps.getFreshRobotPose());
     }
 
-    private Pose2d robotPoseAsAlliance(Pose3D robotPose) {
+    private Pose2d robotPoseAsAlliance(Geo.Pose2D robotPose) {
         if (robotPose == null) return null;
         if (isBlueAlliance) {
             return new Pose2d(
-                    -robotPose.getPosition().x,
-                    -robotPose.getPosition().y,
-                    robotPose.getOrientation().getYaw(AngleUnit.RADIANS) + Math.PI
+                    -robotPose.x,
+                    -robotPose.y,
+                    robotPose.heading + Math.PI
             );
         } else {
             return new Pose2d(
-                    robotPose.getPosition().x,
-                    robotPose.getPosition().y,
-                    robotPose.getOrientation().getYaw(AngleUnit.RADIANS)
+                    robotPose.x,
+                    robotPose.y,
+                    robotPose.heading
             );
         }
     }

@@ -16,4 +16,4 @@ to an instance of the outer class. Because of this, new objects of static inner 
 of the outer class, but can't access non-static variables/methods from the outer class. This is sometimes used to organize
 similar classes (i.e. Commands) by making them all static inner classes of the same outer class.
 
-Simple examples of inner classes and static inner classes can be found in ArmSubsystem in RunMotorPowerCommand and YieldForMotorTarget.
+Simple examples of inner classes can be found in ArmSubsystem in RunMotorPowerCommand and YieldForMotorTarget.

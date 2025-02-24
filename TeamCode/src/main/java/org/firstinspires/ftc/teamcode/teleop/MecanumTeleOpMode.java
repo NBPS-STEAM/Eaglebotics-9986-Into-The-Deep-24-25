@@ -34,6 +34,7 @@ import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants;
@@ -137,6 +138,7 @@ import java.util.function.DoubleSupplier;
  */
 
 @TeleOp(name="Mecanum Tele-OpMode", group="Driver OpMode")
+@Disabled
 public class MecanumTeleOpMode extends CommandOpMode {
 
     // Hardware Variables

@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 import android.util.Size;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
@@ -10,6 +11,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.Geo;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagGameDatabase;
@@ -28,6 +30,9 @@ public class VisionPortalSubsystem extends SubsystemBase {
     private GainControl gainControl = null;
 
     private boolean exposureApplied = false;
+
+    private GyroSource gyroSource = null;
+    private Telemetry gyroTelemetry = null;
 
     public VisionPortalSubsystem(HardwareMap hardwareMap) {
         this(hardwareMap, false);
@@ -72,7 +77,7 @@ public class VisionPortalSubsystem extends SubsystemBase {
      * @see #getFreshRobotPose()
      * @see #getDetections()
      */
-    public Pose3D getRobotPose() {
+    public Geo.Pose2D getRobotPose() {
         return pickNearestPose(getDetections());
     }
 
@@ -81,21 +86,152 @@ public class VisionPortalSubsystem extends SubsystemBase {
      * @see #getRobotPose()
      * @see #getFreshDetections()
      */
-    public Pose3D getFreshRobotPose() {
+    public Geo.Pose2D getFreshRobotPose() {
         return pickNearestPose(getFreshDetections());
     }
 
-    private Pose3D pickNearestPose(List<AprilTagDetection> detections) {
-        if (detections == null) return null;
-        double bestDist = Double.MAX_VALUE;
-        Pose3D bestPose = null;
+    private Geo.Pose2D pickNearestPose(List<AprilTagDetection> detections) {
+        if (detections == null) return null;double bestDist = Double.MAX_VALUE;
+        AprilTagDetection bestDet = null;
         for (AprilTagDetection detection : detections) {
             if (detection.metadata != null && detection.ftcPose.range < bestDist) {
-                bestDist = detection.ftcPose.range;
-                bestPose = detection.robotPose;
+                bestDet = detection;
+                bestDist = bestDet.ftcPose.range;
             }
         }
-        return bestDist < Constants.LOCALIZATION_VISION_RANGE ? bestPose : null;
+        if (bestDet == null) return null;
+        if (bestDist > Constants.LOCALIZATION_VISION_RANGE) return null;
+        if (gyroSource == null) {
+            return pose3Dto2D(bestDet.robotPose);
+        } else {
+            return gyroPoseEstimator(bestDet);
+        }
+    }
+
+    private Geo.Pose2D pose3Dto2D(Pose3D pose) {
+        return new Geo.Pose2D(pose.getPosition().x, pose.getPosition().y, pose.getOrientation().getYaw(AngleUnit.RADIANS));
+    }
+
+    private Geo.Pose2D gyroPoseEstimator(AprilTagDetection detection) {
+        // Introducing: Kelin's Botched Gyro-Vision Localizer!! (patent not pending)
+        // This is the custom 2D localizer that can be used instead of the built-in one (AprilTagDetection.robotPose).
+
+        // The goal of this pose estimator is to estimate the robot's field-relative pose, determining position using vision
+        // and orientation using the robot's gyroscope instead of the orientation values obtained through vision.
+
+        // Speaking from experience, the built-in pose estimator sometimes gives unreliable results for orientation (pitch, roll, yaw).
+        // These results are then used to calculate the robotPose of the detection, which makes it equally unreliable.
+        // Despite this, the results for relative XYZ and RBE (range, bearing, elevation) seem to be reliable.
+        // Hence, this pose estimator, which uses the gyroscope for orientation instead of vision.
+        // However, doing this to estimate a 3D pose would be hard. Let's simplify the process with some assumptions:
+        // Because the robot (should) always be flat on the field and the camera (should) be mounted with no relative
+        // roll/pitch to the AprilTags, we can assume that we won't have to worry about pitch (forward tilt),
+        // roll (sideways tilt), or elevation. With these assumptions, the whole field can be simplified down to a 2D plane.
+        // That's much more feasible!
+        // This works so long as the robot doesn't tilt significantly (which shouldn't happen during auto driving anyway).
+
+        // On paper, it might also be possible to implement a 3D localizer using the gyroscope, but that hasn't been done here.
+
+        // Exit early if this tag can't be identified
+        Geo.Vector2D tagPos = Constants.POS_APRIL_TAGS.get(detection.id);
+        if (tagPos == null) return null;
+
+        // First, offset the camera's distance from the AprilTag to find the robot's distance from the AprilTag relative to the camera's orientation
+        /*Geo.Vector2D robotOffset = Geo.Vector2D.rotateBy(detection.ftcPose.x, detection.ftcPose.y, Constants.CAM_ORIENTATION_2D - (Math.PI / 2));
+
+        double robotRX = robotOffset.x - Constants.CAM_POSITION_2D.y;
+        double robotRY = robotOffset.y - Constants.CAM_POSITION_2D.x;
+
+        // Then, calculate bearing and range from the robot's distance
+        double robotBearing;
+        if (isApproxZero(robotRX)) {
+            // Edge case: robotRX approximately == 0
+            robotBearing = robotRY > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else if (isApproxZero(robotRY)) {
+            // Edge case: robotRY approximately == 0
+            robotBearing = robotRX > 0 ? 0 : Math.PI;
+        } else {
+            robotBearing = Math.atan(robotRY / robotRX);
+            if (robotRX < 0) {
+                if (robotRY > 0) {
+                    robotBearing += Math.PI;
+                } else {
+                    robotBearing -= Math.PI;
+                }
+            }
+        }
+        double robotRange = Math.sqrt(robotRX*robotRX + robotRY*robotRY);
+
+        // Then, estimate the robot's field-relative distance from the AprilTag using heading, bearing, and range
+        double robotHeading = gyroSource.getFieldHeading();
+
+        double robotDX = Math.cos(robotHeading + robotBearing) * robotRange;
+        double robotDY = Math.sin(robotHeading + robotBearing) * robotRange;
+
+        Geo.Vector2D camOffset = Geo.Vector2D.rotateBy(Constants.CAM_POSITION_2D.x, Constants.CAM_POSITION_2D.y, )
+        robotDX +=
+
+        // Add debug data if enabled
+        if (gyroTelemetry != null) {
+            gyroTelemetry.addData("robotOffset.x", robotOffset.x);
+            gyroTelemetry.addData("robotOffset.y", robotOffset.y);
+            gyroTelemetry.addData("robotRX", robotRX);
+            gyroTelemetry.addData("robotRY", robotRY);
+            gyroTelemetry.addData("robotBearing", robotBearing);
+            gyroTelemetry.addData("robotRange", robotRange);
+            gyroTelemetry.addData("robotHeading", robotHeading);
+            gyroTelemetry.addData("robotDX", robotDX);
+            gyroTelemetry.addData("robotDY", robotDY);
+        }*/
+
+
+        double heading = gyroSource.getFieldHeading();
+        double bearing = heading + Math.toRadians(detection.ftcPose.bearing) + Constants.CAM_ORIENTATION_2D; // why is bearing reported in degrees?
+        double range = detection.ftcPose.range;
+
+        double cosB = Math.cos(bearing);
+        double sinB = Math.sin(bearing);
+
+        double dX = cosB * range;
+        double dY = sinB * range;
+
+        double oX = Constants.CAM_POSITION_2D.x * cosB - Constants.CAM_POSITION_2D.y * sinB;
+        double oY = Constants.CAM_POSITION_2D.x * sinB + Constants.CAM_POSITION_2D.y * cosB;
+
+        dX += oX;
+        dY += oY;
+
+        // Finally, offset from the robot's field-relative distance to find its field-relative position using the position of the AprilTag
+        return new Geo.Pose2D(
+                tagPos.x - dX,
+                tagPos.y - dY,
+                heading
+        );
+    }
+
+    private boolean isApproxZero(double num) {
+        return Math.abs(num) < 1e-7;
+    }
+
+    /**
+     * Enables the custom gyro-vision localizer using the provided source for gyro readings (usually the drive subsystem).
+     * <p>Pass null for gyroSource to disable the gyro-vision localizer.</p>
+     */
+    public void enableGyroLocalizer(GyroSource gyroSource) {
+        enableGyroLocalizer(gyroSource, gyroTelemetry);
+    }
+
+    /** @see #enableGyroLocalizer(GyroSource)  */
+    public void enableGyroLocalizer(GyroSource gyroSource, Telemetry debugTelemetry) {
+        this.gyroSource = gyroSource;
+        this.gyroTelemetry = debugTelemetry;
+    }
+
+    /**
+     * Get the heading source being used for gyro-vision localization. If null, then gyro-vision localization is not in use.
+     */
+    public GyroSource getGyroLocalizer() {
+        return gyroSource;
     }
 
     public boolean isVisionPortalStreaming() {
@@ -183,6 +319,22 @@ public class VisionPortalSubsystem extends SubsystemBase {
         // Note: Decimation can be changed on-the-fly to adapt during a match.
         tagProcessor.setDecimation(Constants.CAM_DECIMATION);
 
+        // DEBUG
+        if (Constants.estimator == 0) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.APRILTAG_BUILTIN);
+        } else if (Constants.estimator == 1) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_ITERATIVE);
+        } else if (Constants.estimator == 2) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_SOLVEPNP_EPNP);
+        } else if (Constants.estimator == 3) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_IPPE);
+        } else if (Constants.estimator == 4) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_IPPE_SQUARE);
+        } else if (Constants.estimator == 5) {
+            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_SQPNP);
+        }
+        // END DEBUG
+
         // Create the vision portal by using a builder.
         VisionPortal.Builder builder = new VisionPortal.Builder();
 
@@ -211,5 +363,10 @@ public class VisionPortalSubsystem extends SubsystemBase {
 
         // Disable or re-enable the aprilTag processor at any time.
         visionPortal.setProcessorEnabled(tagProcessor, true);
+    }
+
+
+    public interface GyroSource {
+        double getFieldHeading();
     }
 }

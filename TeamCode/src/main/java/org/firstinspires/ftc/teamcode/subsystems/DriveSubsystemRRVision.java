@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import androidx.annotation.NonNull;
+import com.ThermalEquilibrium.homeostasis.Filters.FilterAlgorithms.KalmanFilter;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Actions;
@@ -37,7 +38,7 @@ import java.util.*;
  * <p>This version of the tune uses VisionPortalSubsystem for localization with AprilTags!</p>
  * <p>Please see {@link MecanumDrive} for more information.</p>
  */
-public class DriveSubsystemRRVision extends SubsystemBase {
+public class DriveSubsystemRRVision extends SubsystemBase implements VisionPortalSubsystem.GyroSource {
     public static class Params {
         // IMU orientation
         public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection = Constants.IMU_HUB_LOGO_DIRECTION;
@@ -88,6 +89,13 @@ public class DriveSubsystemRRVision extends SubsystemBase {
 
     public final Localizer localizer;
     public Pose2d pose;
+
+    /** Whether to use a Kalman filter to de-noise the results from absolute position localizer results (i.e. vision) */
+    public boolean denoiseAbsoluteLocalizer = true;
+    private final KalmanFilter positionFilterX = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
+    private final KalmanFilter positionFilterY = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
+
+    private boolean isBlueAlliance = false;
 
     private final LinkedList<Pose2d> poseHistory = new LinkedList<>();
 
@@ -155,6 +163,7 @@ public class DriveSubsystemRRVision extends SubsystemBase {
 
         lazyImu = new LazyImu(hardwareMap, Constants.NAME_IMU, new RevHubOrientationOnRobot(
                 PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
+        lazyImu.get().resetYaw();
 
         // Preserve previous heading
         Vector2d newPosition = pose.position;
@@ -172,6 +181,7 @@ public class DriveSubsystemRRVision extends SubsystemBase {
                 this.localizer = new DriveLocalizer(this);
                 break;
             case ENCODERS_WITH_VISION:
+                if (Constants.USE_GYRO_ESTIMATOR) visionPortalSubsystem.enableGyroLocalizer(this);
                 this.localizer = new VisionDriveLocalizer(this, visionPortalSubsystem);
                 break;
             default:
@@ -182,7 +192,12 @@ public class DriveSubsystemRRVision extends SubsystemBase {
     }
 
     public void setIsBlueAlliance(boolean isBlueAlliance) {
+        this.isBlueAlliance = isBlueAlliance;
         localizer.setAlliance(isBlueAlliance);
+    }
+
+    public boolean getIsBlueAlliance() {
+        return isBlueAlliance;
     }
 
     // DRIVER CONTROLS
@@ -205,6 +220,11 @@ public class DriveSubsystemRRVision extends SubsystemBase {
 
     public double getDriverHeading() {
         return getImuHeading() + driverHeadingOffset;
+    }
+
+    @Override
+    public double getFieldHeading() {
+        return getDriverHeading() + (isBlueAlliance ? -Math.PI / 2 : Math.PI / 2);
     }
 
     public void setSetPowerMultiplier(double mult) {
@@ -272,6 +292,7 @@ public class DriveSubsystemRRVision extends SubsystemBase {
     public Command getDriveToBasketCommand(ArmSubsystem armSubsystem) {
         Action[] actions = getDriveToBasketActions(armSubsystem);
         return new SequentialCommandGroup(
+                new InstantCommand(armSubsystem::invalidateTargets),
                 new ParallelDeadlineGroup(
                         new WaitUntilCommand(() -> isArmSubsystemAtTarget(armSubsystem)),
                         new RoadRunnerCommand(actions[0])
@@ -302,10 +323,8 @@ public class DriveSubsystemRRVision extends SubsystemBase {
                         .strafeToLinearHeading(scorePos.position, scorePos.heading)
                         .stopAndAdd(armSubsystem::startOuttake)
                         .waitSeconds(0.3)
-                        .afterTime(0.5, () -> {
-                            armSubsystem.lockSetPosition(false);
-                            armSubsystem.applyNamedPosition("stow");
-                        })
+                        .afterTime(0.0, () -> armSubsystem.lockSetPosition(false))
+                        .afterTime(0.5, () -> armSubsystem.applyNamedPosition("stow"))
                         .strafeToLinearHeading(intakePos.position, intakePos.heading)
                         .build()
         };
@@ -596,9 +615,22 @@ public class DriveSubsystemRRVision extends SubsystemBase {
         Pose2d absPose = localizer.getAbsolutePosition();
 
         if (absPose == null) {
+            // No absolute pose available (i.e. no vision)
             pose = pose.plus(twist.value());
+            if (denoiseAbsoluteLocalizer) {
+                // The position filter updates continuously, so update it even though it's not used here
+                positionFilterX.estimate(pose.position.x);
+                positionFilterY.estimate(pose.position.y);
+            }
         } else {
-            pose = absPose;
+            // Absolute pose is available (i.e. vision success)
+            double posX = absPose.position.x;
+            double posY = absPose.position.y;
+            if (denoiseAbsoluteLocalizer) {
+                posX = positionFilterX.estimate(posX);
+                posY = positionFilterY.estimate(posY);
+            }
+            pose = new Pose2d(new Vector2d(posX, posY), absPose.heading);
         }
 
         poseHistory.add(pose);

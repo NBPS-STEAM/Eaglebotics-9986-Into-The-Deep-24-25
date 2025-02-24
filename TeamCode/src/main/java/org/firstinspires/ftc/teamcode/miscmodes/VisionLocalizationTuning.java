@@ -15,7 +15,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.Drawing;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
 import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
 
-@TeleOp(name = "Vision Localization Tuning", group = "Concept")
+@TeleOp(name = "Vision Localization Tuning", group = "Vision Config")
 public class VisionLocalizationTuning extends LinearOpMode {
     private VisionPortalSubsystem vps;
     private DriveSubsystemRRVision drive;

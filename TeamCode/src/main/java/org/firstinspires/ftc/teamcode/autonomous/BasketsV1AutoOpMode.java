@@ -170,6 +170,9 @@ public class BasketsV1AutoOpMode extends CommandOpMode {
 
         // Mark subsystems to not zero again once the next opmode begins (teleop)
         new Trigger(this::isStopRequested).whenActive(this::markToNotZeroWithPose);
+
+        // When the intake intakes a sample, stop the intake
+        new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::stopIntake);
     }
 
     private void markToNotZeroWithPose() {

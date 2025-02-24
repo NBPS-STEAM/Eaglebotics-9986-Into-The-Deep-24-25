@@ -8,12 +8,13 @@ import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.roadrunner.Drawing;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
 import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
 
-@TeleOp(name = "Vision Localization Testing", group = "Concept")
+@TeleOp(name = "Vision Localization Testing", group = "Vision Config")
 public class VisionLocalizationTest extends LinearOpMode {
     private VisionPortalSubsystem vps;
     private DriveSubsystemRRVision drive;
@@ -44,6 +45,25 @@ public class VisionLocalizationTest extends LinearOpMode {
             telemetry.addData("x", drive.pose.position.x);
             telemetry.addData("y", drive.pose.position.y);
             telemetry.addData("heading (deg)", Math.toDegrees(drive.pose.heading.toDouble()));
+            telemetry.addData("tag visible?", drive.didLastPoseEstUseVision() ? 10 : 0);
+            telemetry.addLine();
+            telemetry.addLine("Set alliance for localization:");
+            telemetry.addLine("Press Left bumper - Blue Alliance");
+            telemetry.addLine("Press Right bumper - Red Alliance");
+            if (gamepad1.left_bumper || gamepad1.right_bumper) {
+                drive.setIsBlueAlliance(gamepad1.left_bumper);
+            }
+            telemetry.addData("Alliance", drive.getIsBlueAlliance() ? "Blue Alliance" : "Red Alliance");
+            telemetry.addLine();
+            telemetry.addLine("Set vision localization method:");
+            telemetry.addLine("Press Select - Default Vision-Only");
+            telemetry.addLine("Press Start - Custom Gyro-Vision");
+            if (gamepad1.back) {
+                vps.enableGyroLocalizer(null);
+            } else if (gamepad1.start) {
+                vps.enableGyroLocalizer(drive, telemetry);
+            }
+            telemetry.addData("Vision localization method", vps.getGyroLocalizer() == null ? "Vision-Only" : "Gyro-Vision");
             telemetry.update();
 
             TelemetryPacket packet = new TelemetryPacket();

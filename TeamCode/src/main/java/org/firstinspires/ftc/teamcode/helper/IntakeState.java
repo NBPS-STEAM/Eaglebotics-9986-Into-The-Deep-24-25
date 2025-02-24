@@ -21,9 +21,8 @@ package org.firstinspires.ftc.teamcode.helper;
  * small ints. 'false' is 0 and 'true' is 1.
  */
 public enum IntakeState {
-    NONE,   // No change
-    PRIMED_SAMPLE,   // Ready to intake a sample
-    PRIMED_SPECIMEN, // Ready to intake a specimen
-    INTAKE, // Close the intake
-    OUTTAKE,// Open the intake
+    NONE,    // No change
+    STOPPED, // Intake not moving
+    INTAKE,  // Intake spinning in
+    OUTTAKE, // Intake spinning out
 }

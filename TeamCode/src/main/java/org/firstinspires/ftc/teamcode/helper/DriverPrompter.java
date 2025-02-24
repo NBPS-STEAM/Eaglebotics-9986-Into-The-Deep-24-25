@@ -12,7 +12,8 @@ public class DriverPrompter {
     /**
      * Query the drivers, asking some yes or no question.
      * <p>Returns the value of {@code defaultResult} if no response is given.</p>
-     * <p>THIS SHOULD ALWAYS BE RUN LAST IN INITIALIZATION, as it waits for user input and could potentially hang until the end of init.</p>
+     * <p>Blocks until either a response is received or init ends. THIS SHOULD ALWAYS BE RUN LAST IN INITIALIZATION,
+     * as it waits for user input and could potentially hang until the end of init.</p>
      */
     public static boolean queryBoolean(LinearOpMode opMode, boolean defaultResult, String prompt, String shortName) {
         Gamepad gamepad = opMode.gamepad1;
@@ -24,10 +25,15 @@ public class DriverPrompter {
         opMode.telemetry.addData("Default", defaultResult);
         opMode.telemetry.update();
 
+        // Wait until valid button is pressed
         Boolean button = getButton(gamepad);
         while (button == null && opMode.opModeInInit()) {
             opMode.sleep(50);
             button = getButton(gamepad);
+        }
+        // Wait for button to be released
+        while (getButton(gamepad) != null && opMode.opModeInInit()) {
+            opMode.sleep(50);
         }
 
         boolean result = defaultResult;
@@ -44,7 +50,8 @@ public class DriverPrompter {
     /**
      * Query the drivers, asking which alliance the robot is on.
      * <p>Use {@link #isOnBlueAlliance()} to get the result. This method also returns the result of that method for convenience.</p>
-     * <p>THIS SHOULD ALWAYS BE RUN LAST IN INITIALIZATION, as it waits for user input and could potentially hang until the end of init.</p>
+     * <p>Blocks until either a response is received or init ends. THIS SHOULD ALWAYS BE RUN LAST IN INITIALIZATION,
+     * as it waits for user input and could potentially hang until the end of init.</p>
      * <p>The result of this is stored in a static variable so that the selected alliance persists between opmodes.</p>
      */
     public static boolean queryAlliance(LinearOpMode opMode) {
@@ -57,10 +64,15 @@ public class DriverPrompter {
         opMode.telemetry.addData("Current alliance", getCurrentAllianceName());
         opMode.telemetry.update();
 
+        // Wait until valid button is pressed
         Boolean button = getButton(gamepad);
         while (button == null && opMode.opModeInInit()) {
             opMode.sleep(50);
             button = getButton(gamepad);
+        }
+        // Wait for button to be released
+        while (getButton(gamepad) != null && opMode.opModeInInit()) {
+            opMode.sleep(50);
         }
 
         if (button != null) isBlueAlliance = button;

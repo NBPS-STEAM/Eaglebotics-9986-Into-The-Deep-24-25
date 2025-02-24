@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.Supplier;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingCRServo;
@@ -17,10 +18,7 @@ import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingNullDevice;
 import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingServo;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.SortedSet;
+import java.util.*;
 
 /**
  * This is a class for a "subsystem" which tests motors and servos.
@@ -34,6 +32,8 @@ public class TestingSubsystem extends SubsystemBase {
     // Private Instance Variables
     private final HardwareMap hardwareMap;
     private final Telemetry telemetry;
+
+    private final Map<String, Supplier<?>> extraItems = new LinkedHashMap<>();
 
     private List<ColorRangeSensor> colorRangeSensors;
 
@@ -204,6 +204,14 @@ public class TestingSubsystem extends SubsystemBase {
 
     // Telemetry
 
+    /**
+     * Add extra data to be reported to telemetry using the .toString() of the value given by the valueProducer.
+     * <p>Newly added extra data will overwrite existing extra data with the same caption.</p>
+     */
+    public<T> void addExtraData(String caption, Supplier<T> valueProducer) {
+        extraItems.put(caption, valueProducer);
+    }
+
     public void reportTelemetry() {
         // Clear old data
         telemetry.clear();
@@ -225,6 +233,12 @@ public class TestingSubsystem extends SubsystemBase {
         // List some data
         telemetry.addLine("!! ROBOT TESTING MODE !!");
         telemetry.addLine();
+        if (!extraItems.isEmpty()) {
+            for (Map.Entry<String, Supplier<?>> item : extraItems.entrySet()) {
+                telemetry.addData(item.getKey(), item.getValue().get());
+            }
+            telemetry.addLine();
+        }
         telemetry.addData("Motors found", motorCount);
         telemetry.addData("Servos found", servoCount);
         telemetry.addData("Continuous rotation servos found", crServoCount);

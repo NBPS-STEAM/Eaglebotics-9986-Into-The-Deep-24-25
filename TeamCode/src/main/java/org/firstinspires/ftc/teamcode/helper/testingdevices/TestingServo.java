@@ -24,6 +24,12 @@ public class TestingServo extends TestingDevice {
     }
 
     @Override
+    public void deactivate() {
+        if (isActive()) getHardwareDevice().getController().pwmDisable();
+        super.deactivate();
+    }
+
+    @Override
     protected void moveDirectly(double amount) {
         if (!isActive()) return;
         getHardwareDevice().setPosition(amount);
