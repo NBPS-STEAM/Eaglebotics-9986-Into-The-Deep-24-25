@@ -29,6 +29,7 @@
 
 package org.firstinspires.ftc.teamcode.helper;
 
+import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -77,6 +78,9 @@ public class ResetZeroState extends LinearOpMode {
     }
     public static void markToNotZeroOnInit(Double headingToPreserve) {
         markToNotZeroOnInit(null, headingToPreserve);
+    }
+    public static void markToNotZeroOnInit(Pose2d poseToPreserve) {
+        markToNotZeroOnInit(poseToPreserve.position, poseToPreserve.heading.toDouble());
     }
     public static void markToNotZeroOnInit(Vector2d posToPreserve, Double headingToPreserve) {
         setZeroDriveOnInit(false, posToPreserve);

@@ -30,6 +30,7 @@
 package org.firstinspires.ftc.teamcode.teleop;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.InstantCommand;
@@ -37,7 +38,6 @@ import com.arcrobotics.ftclib.command.RunCommand;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
@@ -112,7 +112,7 @@ public class TestingLocalizerTeleOpMode extends CommandOpMode {
         gamepadEx1 = new GamepadEx(gamepad1);
         gamepadEx2 = new GamepadEx(gamepad2);
 
-        testingSubsystem = new TestingSubsystem(hardwareMap, telemetry);
+        testingSubsystem = new TestingSubsystem(hardwareMap, new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()));
 
         ResetZeroState.resetZeroState();
         visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, true);
@@ -144,8 +144,8 @@ public class TestingLocalizerTeleOpMode extends CommandOpMode {
 
         bindTo(gamepadEx2, Button.DPAD_DOWN, driveSubsystem::zeroDriverHeading); // Zero (reset) robot heading direction
 
-        bindTo(gamepadEx2, Button.LEFT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(true)); // Set alliance for localization: Blue Alliance
-        bindTo(gamepadEx2, Button.RIGHT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(false)); // Set alliance for localization: Red Alliance
+        bindTo(gamepadEx2, Button.LEFT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(true, true)); // Set alliance for localization: Blue Alliance
+        bindTo(gamepadEx2, Button.RIGHT_BUMPER, () -> driveSubsystem.setIsBlueAlliance(false, true)); // Set alliance for localization: Red Alliance
 
         bindTo(gamepadEx2, Button.BACK, () -> visionPortalSubsystem.enableGyroLocalizer(null)); // Set vision localization method: Default Vision-Only
         bindTo(gamepadEx2, Button.START, () -> visionPortalSubsystem.enableGyroLocalizer(driveSubsystem)); // Set vision localization method: Custom Gyro-Vision
@@ -155,6 +155,7 @@ public class TestingLocalizerTeleOpMode extends CommandOpMode {
         testingSubsystem.addExtraData("Pose x", () -> driveSubsystem.pose.position.x);
         testingSubsystem.addExtraData("Pose y", () -> driveSubsystem.pose.position.y);
         testingSubsystem.addExtraData("Pose heading (degrees)", () -> Math.toDegrees(driveSubsystem.pose.heading.toDouble()));
+        testingSubsystem.addExtraData("tag visible?", () -> visionPortalSubsystem.hasDetections() ? 10 : 0);
         testingSubsystem.addExtraData("Alliance", () -> driveSubsystem.getIsBlueAlliance() ? "Blue Alliance" : "Red Alliance");
         testingSubsystem.addExtraData("Vision localization method", () -> visionPortalSubsystem.getGyroLocalizer() == null ? "Vision-Only" : "Gyro-Vision");
 

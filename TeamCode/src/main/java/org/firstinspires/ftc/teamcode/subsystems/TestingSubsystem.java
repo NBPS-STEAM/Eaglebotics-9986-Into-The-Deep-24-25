@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.Supplier;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingCRServo;
 import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingDcMotor;
 import org.firstinspires.ftc.teamcode.helper.testingdevices.TestingDevice;
@@ -85,7 +86,10 @@ public class TestingSubsystem extends SubsystemBase {
         // Get all sensors
         colorRangeSensors = hardwareMap.getAll(ColorRangeSensor.class);
         colorRangeSensors.sort(Comparator.comparing(HardwareDevice::getDeviceName)); // Sort by device name
-        for (ColorRangeSensor sensor : colorRangeSensors) sensor.enableLed(false);
+        for (ColorRangeSensor sensor : colorRangeSensors) {
+            sensor.enableLed(Constants.SENSOR_CR_LED_ENABLED);
+            sensor.setGain(Constants.SENSOR_CR_GAIN);
+        }
     }
 
     /**
@@ -213,9 +217,6 @@ public class TestingSubsystem extends SubsystemBase {
     }
 
     public void reportTelemetry() {
-        // Clear old data
-        telemetry.clear();
-
         // Give instructions
         telemetry.addLine("If a device is missing from the list, make sure it is configured using 'Configure Robot' on the Driver Station.");
         telemetry.addLine();
@@ -269,8 +270,11 @@ public class TestingSubsystem extends SubsystemBase {
             for (ColorRangeSensor sensor : colorRangeSensors) {
                 telemetry.addLine();
                 telemetry.addLine(sensor.getDeviceName());
+                telemetry.addData("Gain", sensor.getGain());
                 telemetry.addData("Distance (mm)", sensor.getDistance(DistanceUnit.MM));
-                telemetry.addData("Color", TelemetrySubsystem.colorToString(sensor.getNormalizedColors()));
+                telemetry.addData("Color r", sensor.getNormalizedColors().red);
+                telemetry.addData("Color g", sensor.getNormalizedColors().green);
+                telemetry.addData("Color b", sensor.getNormalizedColors().blue);
             }
             telemetry.addLine();
             telemetry.addLine();

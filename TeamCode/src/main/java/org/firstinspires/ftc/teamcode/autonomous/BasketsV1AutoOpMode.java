@@ -35,6 +35,7 @@ import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
@@ -78,6 +79,7 @@ import java.util.Arrays;
 
 @Config
 @Autonomous(name="Baskets V1 Auto-OpMode (3 samples)", group="Autonomous OpMode")
+@Disabled
 public class BasketsV1AutoOpMode extends CommandOpMode {
 
     // Hardware Variables

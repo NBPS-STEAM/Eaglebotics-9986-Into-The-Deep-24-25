@@ -20,7 +20,7 @@ public class VisionLocalizationTest extends LinearOpMode {
     private DriveSubsystemRRVision drive;
 
     @Override
-    public void runOpMode() throws InterruptedException {
+    public void runOpMode() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
         vps = new VisionPortalSubsystem(hardwareMap, true);
@@ -32,26 +32,18 @@ public class VisionLocalizationTest extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            drive.setDrivePowers(new PoseVelocity2d(
-                    new Vector2d(
-                            -gamepad1.left_stick_y,
-                            -gamepad1.left_stick_x
-                    ),
-                    -gamepad1.right_stick_x
-            ));
-
-            drive.updatePoseEstimate();
+            drive.drive(gamepad1);
 
             telemetry.addData("x", drive.pose.position.x);
             telemetry.addData("y", drive.pose.position.y);
             telemetry.addData("heading (deg)", Math.toDegrees(drive.pose.heading.toDouble()));
-            telemetry.addData("tag visible?", drive.didLastPoseEstUseVision() ? 10 : 0);
+            telemetry.addData("tag visible?", vps.hasDetections() ? 10 : 0);
             telemetry.addLine();
             telemetry.addLine("Set alliance for localization:");
             telemetry.addLine("Press Left bumper - Blue Alliance");
             telemetry.addLine("Press Right bumper - Red Alliance");
             if (gamepad1.left_bumper || gamepad1.right_bumper) {
-                drive.setIsBlueAlliance(gamepad1.left_bumper);
+                drive.setIsBlueAlliance(gamepad1.left_bumper, true);
             }
             telemetry.addData("Alliance", drive.getIsBlueAlliance() ? "Blue Alliance" : "Red Alliance");
             telemetry.addLine();

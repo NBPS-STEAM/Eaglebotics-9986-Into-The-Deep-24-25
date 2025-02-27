@@ -2,10 +2,10 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.arcrobotics.ftclib.geometry.Vector2d;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -49,7 +49,6 @@ public class Constants {
     public static final String  NAME_IMU = "imu1";
 
     public static final String  NAME_CAMERA = "webcam1";
-    public static int estimator = -1; // DEBUG
 
     // Hardware Directions
     public static final DcMotor.Direction DIRECTION_DRIVE_FL = DcMotor.Direction.REVERSE;
@@ -63,7 +62,7 @@ public class Constants {
     public static final DcMotor.Direction DIRECTION_ARM_EXTEND = DcMotor.Direction.FORWARD;
     public static final DcMotor.Direction DIRECTION_ARM_RAISE  = DcMotor.Direction.REVERSE;
     public static final Servo.Direction   DIRECTION_ARM_WRIST  = Servo.Direction.FORWARD;
-    public static final DcMotor.Direction DIRECTION_ARM_RETRACT  = DcMotor.Direction.FORWARD;
+    public static final DcMotor.Direction DIRECTION_ARM_RETRACT  = DcMotor.Direction.REVERSE;
     public static final DcMotor.ZeroPowerBehavior ZEROPOWER_ARM_RETRACT  = DcMotor.ZeroPowerBehavior.FLOAT;
 
     public static final RevHubOrientationOnRobot.LogoFacingDirection
@@ -80,6 +79,9 @@ public class Constants {
     public static final int       ROTATION_TICKS_180_DEGREES = (1650 - 650) * 2; // The number of encoder ticks for the arm rotation to travel 180 degrees
     public static final int       ROTATION_TICKS_NORTH       = 1650;     // The number of arm rotation encoder ticks at the north (straight up) position
 
+    public static       boolean   SENSOR_CR_LED_ENABLED       = true; // Whether the LED is enabled on ColorRangeSensors (this might not do anything?)
+    public static       float     SENSOR_CR_GAIN              = 11.0f; // The gain on ColorRangeSensors
+
     public static final double    DRIVE_TICKS_REVOLUTION     = 537.6;  // The number of encoder ticks in one revolution of a drive motor
     public static final double    WHEEL_CIRCUMFERENCE_INCHES = (96 / 25.4) * Math.PI; // The approximate circumference of a drive motor's wheel
                                                                               // Wheels are 96mm in diameter, this must be converted to inches
@@ -88,6 +90,8 @@ public class Constants {
     public static final double    DRIVE_POWER_MULTIPLIER      = 1.0; // The multiplier scale on the robot's drivetrain power
     public static final double    DRIVE_POWER_MULTIPLIER_MED  = 0.4; // The multiplier scale on the robot's drivetrain power (when going medium speed)
     public static final double    DRIVE_POWER_MULTIPLIER_SLOW = 0.25; // The multiplier scale on the robot's drivetrain power (when going slow)
+    public static       double    DRIVE_TOUCHPAD_STRAFE_SENSITIVITY = 5.0; // The sensitivity of touchpad driving in strafing
+    public static       double    DRIVE_TOUCHPAD_TURN_SENSITIVITY   = 5.0; // The sensitivity of touchpad driving in turning
 
     public static final double    ARM_ROTATION_POWER          = 0.5; // The amount of power that the arm rotates with in teleop
     public static final double    ARM_EXTENSION_POWER         = 0.6; // The amount of power that the arm extends/retracts with in teleop
@@ -100,15 +104,15 @@ public class Constants {
     public static final double    ARM_WRIST_RATE_MANUAL       = 0.02; // The rate that the wrist turns at while manually offsetting it (MANUAL CONTROL)
 
     public static final double    INTAKE_POWER                = 1.0; // The power of the intake when intaking on a scale of -1 to 1
-    public static final double    OUTTAKE_POWER               = -0.5; // The power of the intake when outtaking on a scale of -1 to 1
+    public static final double    OUTTAKE_POWER               = -0.3; // The power of the intake when outtaking on a scale of -1 to 1
 
     public static final int       ROTATION_TARGET_THRESHOLD   = 10;  // The maximum distance of the rotation from its target to consider it on-target
     public static final int       EXTENSION_TARGET_THRESHOLD  = 10;  // The maximum distance of the extension from its target to consider it on-target
     public static final int       RAISE_TARGET_THRESHOLD      = 10;  // The maximum distance of the raise from its target to consider it on-target
 
-    public static final double    INTAKE_SAMPLE_THRESHOLD     = 15.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this, then it has a sample.
+    public static final double    INTAKE_SAMPLE_THRESHOLD     = 17.0; // (IN MILLIMETERS) If the range sensor in the intake measures less than this, then it has a sample.
 
-    public static final double    STICK_COMMAND_THRESHOLD     = 0.8;  // If a controller joystick moves farther than this, it can trigger a command.
+    public static final double    ANALOG_COMMAND_THRESHOLD     = 0.25;  // If an analog controller input moves farther than this, it may trigger a command.
     public static final double    STICK_INTERRUPT_DEADZONE_SQR = 0.15*0.15; // If either of the base driver's joysticks move more than this, any running autonomous driving command will be interrupted (squared)
 
 
@@ -117,15 +121,21 @@ public class Constants {
     public static final double    ARM_EXTENSION_POWER_AUTO    = 0.4; // The amount of power that the arm extends/retracts with in the autonomous routine (some routines override this)
     public static final double    ARM_RAISE_POWER_AUTO        = 1.0; // The amount of power that the arm rises/lowers with in the autonomous routine (some routines override this)
 
+    public static       double    AUTO_DRIVE_VEL_MAX          = 40.0; // The default maximum velocity of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_ACCEL_MAX        = 20.0; // The default maximum acceleration of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_ANG_VEL_MAX      = Math.PI; // The default maximum angular velocity of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_ANG_ACCEL_MAX    = Math.PI; // The default maximum angular acceleration of autonomous driving using DriveSubsystemRRVision
+
     public static final double    LOCALIZATION_VISION_RANGE         = 200.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
     //public static       double    LOCALIZATION_LINEAR_THRESHOLD_SQR = Double.POSITIVE_INFINITY;//9.0; // The maximum speed at which the camera can be used to localize (squared)
     //public static       double    LOCALIZATION_ANGULAR_THRESHOLD    = Double.POSITIVE_INFINITY;//Math.PI * 0.5; // The maximum angular speed at which the camera can be used to localize
 
     // Filter constants for de-noising the absolute localizer in DriveSubsystemRRVision
     // See the "Least Squares + Kalman Filter" section for more info: https://www.ctrlaltftc.com/homeostasis-by-thermal-equilibrium/state-estimation-and-filters
-    public static       double ABS_LOCALIZER_DENOISE_Q = 0.3; // High values put more emphasis on the sensor.
-    public static       double ABS_LOCALIZER_DENOISE_R = 3.0; // High Values put more emphasis on regression.
-    public static       int    ABS_LOCALIZER_DENOISE_N = 3;   // The number of estimates in the past we perform regression on.
+    public static       boolean ABS_LOCALIZER_DENOISE   = false; // Whether to use a Kalman filter to de-noise the results from absolute position localizer results (i.e. vision)
+    public static       double  ABS_LOCALIZER_DENOISE_Q = 0.3; // High values put more emphasis on the sensor.
+    public static       double  ABS_LOCALIZER_DENOISE_R = 3.0; // High Values put more emphasis on regression.
+    public static       int     ABS_LOCALIZER_DENOISE_N = 5;   // The number of estimates in the past we perform regression on.
 
 
     // Testing TeleOp configuration
@@ -162,17 +172,20 @@ public class Constants {
      * to +/-90 degrees if it's vertical, or 180 degrees if it's upside-down.
      */
     // The following pose values are used for the VisionPortal's built-in robot localizer:
-    public static final Position           CAM_POSITION    = new Position(DistanceUnit.INCH, 6.875, 2.625, 5.5, 0);
+    public static final Position           CAM_POSITION    = new Position(DistanceUnit.INCH, 7.0, 2.125, 4.25, 0);
     public static final YawPitchRollAngles CAM_ORIENTATION = new YawPitchRollAngles(AngleUnit.DEGREES, -90, -90, 0, 0);
     // The following pose values are used for the custom 2D gyro robot localizer:
-    public static final Geo.Vector2D       CAM_POSITION_2D     = new Geo.Vector2D(6.875, 2.625); // Camera position from center of robot relative to robot orientation
+    public static final Geo.Vector2D       CAM_POSITION_2D     = new Geo.Vector2D(7.0, 2.125); // Camera position from center of robot relative to robot orientation
     public static final double             CAM_ORIENTATION_2D  = -Math.PI / 2; // The camera's yaw relative to robot orientation. Measured in radians, use Math.toRadians(degrees) if you prefer
     // End of pose config
+    public static       boolean            CAM_DO_STREAM       = true; // Whether to stream the camera to the Driver Hub in non-testing vision opmodes
     public static       boolean            USE_GYRO_ESTIMATOR  = true; // Whether to use the custom 2D gyro-vision robot localizer in DriveSubsystemRRVision
-    public static       int                CAM_SIZE_X      = 1280;
-    public static       int                CAM_SIZE_Y      = 720;
-    public static       float              CAM_DECIMATION  = 3;
-    public static       long               CAM_EXPOSURE_MS = 1;
+    public static       int                CAM_SIZE_X      = 1280; // Width (pixels) of the camera's resolution (must be a supported resolution)
+    public static       int                CAM_SIZE_Y      = 720;  // Height (pixels) of the camera's resolution (must be a supported resolution)
+    public static       float              CAM_DECIMATION  = 3; // To be honest, I'm not sure what this does. More info in VisionPortalSubsystem.initAprilTag()
+    public static       long               CAM_EXPOSURE_MS = 1; // The preferred exposure time of the camera
+
+    // Camera tuning
     // For new global-shutter camera with black 3D-printed case:
     // TODO: label the model of camera on the case
     public static       double             CAM_FX          = 906.797;
@@ -189,18 +202,23 @@ public class Constants {
     // Field-relative positions (based on AprilTag localization)
 
     // Only used for custom 2D gyro localizer:
+    public static       double FIELD_HALFSIZE_X = 71;
+    public static       double FIELD_HALFSIZE_Y = 71;
     public static final Map<Integer, Geo.Vector2D> POS_APRIL_TAGS = new HashMap<Integer, Geo.Vector2D>() {{
-        put(11, new Geo.Vector2D(-71, 47.5));
-        put(12, new Geo.Vector2D(0, 71));
-        put(13, new Geo.Vector2D(71, 47.5));
-        put(14, new Geo.Vector2D(71, -47.5));
-        put(15, new Geo.Vector2D(0, -71));
-        put(16, new Geo.Vector2D(-71, -47.5));
+        put(11, new Geo.Vector2D(-FIELD_HALFSIZE_X, FIELD_HALFSIZE_Y * 2.0 / 3.0));
+        put(12, new Geo.Vector2D(0, FIELD_HALFSIZE_Y));
+        put(13, new Geo.Vector2D(FIELD_HALFSIZE_X, FIELD_HALFSIZE_Y * 2.0 / 3.0));
+        put(14, new Geo.Vector2D(FIELD_HALFSIZE_X, -FIELD_HALFSIZE_Y * 2.0 / 3.0));
+        put(15, new Geo.Vector2D(0, -FIELD_HALFSIZE_Y));
+        put(16, new Geo.Vector2D(-FIELD_HALFSIZE_X, -FIELD_HALFSIZE_Y * 2.0 / 3.0));
     }};
 
     // These are the positions for the RED alliance and will be automatically mirrored for the blue alliance.
-    public static final Pose2d POS_BASKETS_APPROACH        = new Pose2d(-47.68, -46.25, Math.toRadians(-90));
-    public static final Pose2d POS_BASKETS_SCORE           = new Pose2d(-56.9, -53.735, Math.toRadians(-120.25));
-    public static final Pose2d POS_INTAKE_APPROACH         = new Pose2d(-40.5, -19.45, Math.toRadians(60));
+    //public static final Pose2d POS_BASKETS_APPROACH     = new Pose2d(-47.68, -40, Math.toRadians(-90));
+    public static final Pose2d POS_BASKETS_SCORE        = new Pose2d(-55.92, -53.37, Math.toRadians(-121.196));
+    public static final Pose2d POS_INTAKE_APPROACH      = new Pose2d(-40, 0, Math.toRadians(-90));
+
+    public static final Pose2d POS_SPECIMEN_APPROACH    = new Pose2d(35, -42.8, Math.toRadians(-43.5));
+    public static final Pose2d POS_SPECIMEN_INTAKE      = new Pose2d(44.3, -52.62, Math.toRadians(-43.5));
 
 }

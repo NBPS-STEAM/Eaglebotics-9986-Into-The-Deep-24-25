@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.helper.localization;
 
 import com.acmerobotics.roadrunner.*;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.Geo;
 import org.firstinspires.ftc.teamcode.roadrunner.Localizer;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
@@ -23,6 +24,7 @@ public class VisionDriveLocalizer implements Localizer {
 
     private Pose2d absolutePose = null;
     private Localizers.Methods lastUpdateMethod = Localizers.Methods.UNSPECIFIED;
+    private Localizers.Status lastUpdateStatus = Localizers.Status.OK;
 
     /** Remember to set an alliance with {@link #setAlliance(boolean)} before use! */
     public VisionDriveLocalizer(DriveSubsystemRRVision drive, VisionPortalSubsystem visionPortalSubsystem) {
@@ -34,11 +36,7 @@ public class VisionDriveLocalizer implements Localizer {
     @Override
     public Twist2dDual<Time> update() {
         Twist2dDual<Time> encoderTwist = encoderLocalizer.update();
-        Pose2d visionPose = getVisionPose();
-
-        // Record absolute pose and whether it could be obtained using vision
-        absolutePose = visionPose;
-        lastUpdateMethod = visionPose == null ? Localizers.Methods.ENCODERS : Localizers.Methods.VISION;
+        calculateAbsolutePosition();
 
         // We always want to use encoders for change in position/velocity because they're more precise, so return that
         return encoderTwist;
@@ -46,6 +44,24 @@ public class VisionDriveLocalizer implements Localizer {
 
     @Override
     public Pose2d getAbsolutePosition() {
+        return absolutePose;
+    }
+
+    @Override
+    public Pose2d calculateAbsolutePosition() {
+        // Record absolute pose and whether it could be obtained using vision
+        absolutePose = getVisionPose();
+        lastUpdateMethod = absolutePose == null ? Localizers.Methods.ENCODERS : Localizers.Methods.VISION;
+
+        // Determine whether the vision pose is reasonable
+        if (absolutePose != null &&
+                (notWithin(absolutePose.position.x, -Constants.FIELD_HALFSIZE_X-1, Constants.FIELD_HALFSIZE_X+1)
+                        || notWithin(absolutePose.position.y, -Constants.FIELD_HALFSIZE_Y-1, Constants.FIELD_HALFSIZE_Y+1))) {
+            lastUpdateStatus = Localizers.Status.DUBIOUS_ALLIANCE;
+        } else {
+            lastUpdateStatus = Localizers.Status.OK;
+        }
+
         return absolutePose;
     }
 
@@ -76,7 +92,16 @@ public class VisionDriveLocalizer implements Localizer {
     }
 
     @Override
+    public Localizers.Status getLastUpdateStatus() {
+        return lastUpdateStatus;
+    }
+
+    @Override
     public void setAlliance(boolean isBlueAlliance) {
         this.isBlueAlliance = isBlueAlliance;
+    }
+
+    private static boolean notWithin(double num, double min, double max) {
+        return num < min || num > max;
     }
 }

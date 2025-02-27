@@ -46,6 +46,7 @@ public class DriverPrompter {
     }
 
     private static boolean isBlueAlliance = false;
+    private static boolean allianceFromDriver = false;
 
     /**
      * Query the drivers, asking which alliance the robot is on.
@@ -75,7 +76,8 @@ public class DriverPrompter {
             opMode.sleep(50);
         }
 
-        if (button != null) isBlueAlliance = button;
+        allianceFromDriver = button != null;
+        if (allianceFromDriver) isBlueAlliance = button;
 
         opMode.telemetry.addData("Your alliance", getCurrentAllianceName()).setRetained(true);
         opMode.telemetry.update();
@@ -94,6 +96,14 @@ public class DriverPrompter {
      */
     public static boolean isOnBlueAlliance() {
         return isBlueAlliance;
+    }
+
+    /**
+     * Returns true if the last call to {@link #queryAlliance(LinearOpMode)} resulted in the driver making a selection.
+     * <p>If false, then that means the call ended early and the alliance was decided by the default.</p>
+     */
+    public static boolean wasAllianceFromDriver() {
+        return allianceFromDriver;
     }
 
     public static String getCurrentAllianceName() {

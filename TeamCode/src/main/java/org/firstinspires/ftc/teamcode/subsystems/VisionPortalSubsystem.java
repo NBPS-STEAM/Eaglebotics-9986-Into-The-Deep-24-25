@@ -55,6 +55,13 @@ public class VisionPortalSubsystem extends SubsystemBase {
     }
 
     /**
+     * Shorthand for {@code !getDetections().isEmpty()}
+     */
+    public boolean hasDetections() {
+        return !getDetections().isEmpty();
+    }
+
+    /**
      * @see AprilTagProcessor#getDetections()
      */
     public List<AprilTagDetection> getDetections() {
@@ -132,58 +139,8 @@ public class VisionPortalSubsystem extends SubsystemBase {
 
         // On paper, it might also be possible to implement a 3D localizer using the gyroscope, but that hasn't been done here.
 
-        // Exit early if this tag can't be identified
         Geo.Vector2D tagPos = Constants.POS_APRIL_TAGS.get(detection.id);
         if (tagPos == null) return null;
-
-        // First, offset the camera's distance from the AprilTag to find the robot's distance from the AprilTag relative to the camera's orientation
-        /*Geo.Vector2D robotOffset = Geo.Vector2D.rotateBy(detection.ftcPose.x, detection.ftcPose.y, Constants.CAM_ORIENTATION_2D - (Math.PI / 2));
-
-        double robotRX = robotOffset.x - Constants.CAM_POSITION_2D.y;
-        double robotRY = robotOffset.y - Constants.CAM_POSITION_2D.x;
-
-        // Then, calculate bearing and range from the robot's distance
-        double robotBearing;
-        if (isApproxZero(robotRX)) {
-            // Edge case: robotRX approximately == 0
-            robotBearing = robotRY > 0 ? Math.PI / 2 : -Math.PI / 2;
-        } else if (isApproxZero(robotRY)) {
-            // Edge case: robotRY approximately == 0
-            robotBearing = robotRX > 0 ? 0 : Math.PI;
-        } else {
-            robotBearing = Math.atan(robotRY / robotRX);
-            if (robotRX < 0) {
-                if (robotRY > 0) {
-                    robotBearing += Math.PI;
-                } else {
-                    robotBearing -= Math.PI;
-                }
-            }
-        }
-        double robotRange = Math.sqrt(robotRX*robotRX + robotRY*robotRY);
-
-        // Then, estimate the robot's field-relative distance from the AprilTag using heading, bearing, and range
-        double robotHeading = gyroSource.getFieldHeading();
-
-        double robotDX = Math.cos(robotHeading + robotBearing) * robotRange;
-        double robotDY = Math.sin(robotHeading + robotBearing) * robotRange;
-
-        Geo.Vector2D camOffset = Geo.Vector2D.rotateBy(Constants.CAM_POSITION_2D.x, Constants.CAM_POSITION_2D.y, )
-        robotDX +=
-
-        // Add debug data if enabled
-        if (gyroTelemetry != null) {
-            gyroTelemetry.addData("robotOffset.x", robotOffset.x);
-            gyroTelemetry.addData("robotOffset.y", robotOffset.y);
-            gyroTelemetry.addData("robotRX", robotRX);
-            gyroTelemetry.addData("robotRY", robotRY);
-            gyroTelemetry.addData("robotBearing", robotBearing);
-            gyroTelemetry.addData("robotRange", robotRange);
-            gyroTelemetry.addData("robotHeading", robotHeading);
-            gyroTelemetry.addData("robotDX", robotDX);
-            gyroTelemetry.addData("robotDY", robotDY);
-        }*/
-
 
         double heading = gyroSource.getFieldHeading();
         double bearing = heading + Math.toRadians(detection.ftcPose.bearing) + Constants.CAM_ORIENTATION_2D; // why is bearing reported in degrees?
@@ -318,22 +275,6 @@ public class VisionPortalSubsystem extends SubsystemBase {
         // Decimation = 3 ..  Detect 5" Tag from 10 feet away at 30 Frames Per Second (default)
         // Note: Decimation can be changed on-the-fly to adapt during a match.
         tagProcessor.setDecimation(Constants.CAM_DECIMATION);
-
-        // DEBUG
-        if (Constants.estimator == 0) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.APRILTAG_BUILTIN);
-        } else if (Constants.estimator == 1) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_ITERATIVE);
-        } else if (Constants.estimator == 2) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_SOLVEPNP_EPNP);
-        } else if (Constants.estimator == 3) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_IPPE);
-        } else if (Constants.estimator == 4) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_IPPE_SQUARE);
-        } else if (Constants.estimator == 5) {
-            tagProcessor.setPoseSolver(AprilTagProcessor.PoseSolver.OPENCV_SQPNP);
-        }
-        // END DEBUG
 
         // Create the vision portal by using a builder.
         VisionPortal.Builder builder = new VisionPortal.Builder();

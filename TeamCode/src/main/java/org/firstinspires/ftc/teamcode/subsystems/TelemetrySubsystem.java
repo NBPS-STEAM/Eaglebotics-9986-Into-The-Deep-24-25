@@ -68,9 +68,6 @@ public class TelemetrySubsystem extends SubsystemBase {
         QuadMotorValues<Double> drivePowers = driveSubsystem.getMotorPowers();
         NormalizedRGBA[] sensorColors = armSubsystem.getColorReadings();
 
-        // Clear old info from the Driver Station
-        telemetry.clear();
-
         // Add info to be shown on the Driver Station
         telemetry.addData("Status", "Run Time: " + mainOpMode.getRuntime());
         telemetry.addLine();
@@ -118,6 +115,6 @@ public class TelemetrySubsystem extends SubsystemBase {
     }
 
     public static String colorToString(NormalizedRGBA color) {
-        return "r: " + ((int) (color.red * 256f)) + " g: " + ((int) (color.green * 256f)) + " b: " + ((int) (color.blue * 256f));
+        return "r: " + color.red + " g: " + color.green + " b: " + color.blue;
     }
 }

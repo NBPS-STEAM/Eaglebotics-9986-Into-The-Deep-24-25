@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
+import com.acmerobotics.roadrunner.ParallelAction;
 import com.arcrobotics.ftclib.command.*;
+import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.hardware.*;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -11,11 +13,11 @@ import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
-import org.firstinspires.ftc.teamcode.helper.Wrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.DoubleSupplier;
 
 /**
  * This is a class for a "subsystem" that manages all of the parts of the arm. It's in charge of
@@ -31,7 +33,7 @@ public class ArmSubsystem extends SubsystemBase {
     // Positions
     private final HashMap<String, ArmPosition> namedPositions;
     private final Command smartIntakeCommand;
-    private Wrapper<String> smartIntakeStow = new Wrapper<>("stow");
+    private String smartIntakeStow = "stow";
     private String lastSetPosition = "";
     private IntakeState intakeState = IntakeState.NONE;
     private double wristOffset = 0.0;
@@ -62,24 +64,23 @@ public class ArmSubsystem extends SubsystemBase {
         // Add all named arm positions
         namedPositions = new HashMap<>();
         // NORMAL POSITION
-        addNamedPosition("compact", new ArmPosition(0.17, 2, 0, 1.03, IntakeState.STOPPED));
+        addNamedPosition("compact", new ArmPosition(0.175, 0, 0, 1.03, IntakeState.STOPPED));
         addNamedPosition("stow", new ArmPosition(0.37, 2, 0, 1.4, IntakeState.STOPPED));
         addNamedPosition("intake", new ArmPosition(0.37, 67, 0, 1.39, IntakeState.INTAKE));
         addNamedPosition("intake-down", new ArmPosition(0.3, 67, 0, 1.39, IntakeState.INTAKE));
-        addNamedPosition("intake vertical", new ArmPosition(0.37, 67, 0, 1.39, IntakeState.INTAKE)); //TODO
-        addNamedPosition("intake vertical-down", new ArmPosition(0.3, 67, 0, 1.39, IntakeState.INTAKE)); //TODO
+        addNamedPosition("intake vertical", new ArmPosition(0.425, 67, 0, 1.766, IntakeState.INTAKE));
+        addNamedPosition("intake vertical-down", new ArmPosition(0.355, 67, 0, 1.766, IntakeState.INTAKE));
         addNamedPosition("intake ground", new ArmPosition(0.17, 18, 0, 1.317, IntakeState.INTAKE));
-        addNamedPosition("intake ground-far", new ArmPosition(0.2, 67, 0, 1.317, IntakeState.INTAKE)); //TODO
         addNamedPosition("basket high", new ArmPosition(0.9, 67, 160, 1.766));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.766));
         addNamedPosition("specimen high", new ArmPosition(0.67, 67, 0, 1.5));
         addNamedPosition("specimen low", new ArmPosition(0.56, 67, 0, 1.5));
 
-        addNamedPosition("hang stage 1", new ArmPosition(1.5, 2, 160, 1.5, IntakeState.STOPPED));
-        addNamedPosition("hang stage 2", new ArmPosition(1.8, 2, 0, 1.5, IntakeState.STOPPED));
+        addNamedPosition("hang stage 1", new ArmPosition(1.4, 2, 160, 1.5, IntakeState.STOPPED));
+        addNamedPosition("hang stage 2", new ArmPosition(1.7, 2, 0, 1.5, IntakeState.STOPPED));
 
         // These positions are only used in autonomous routines
-        addNamedPosition("ascent level 1", new ArmPosition(0.65, 2, 80, 1.5, IntakeState.STOPPED));
+        addNamedPosition("ascent level 1", new ArmPosition(0.6, 67, 160, 1.5, IntakeState.STOPPED));
         addNamedPosition("intake ground-high", new ArmPosition(0.17, 67, 95, 1.294, IntakeState.INTAKE)
                 .after(() -> applyRotationPositionUnscaled(-50)));
 
@@ -93,11 +94,9 @@ public class ArmSubsystem extends SubsystemBase {
         this.wristServo = hardwareMap.get(Servo.class, Constants.NAME_ARM_WRIST);
         this.retractMotor = hardwareMap.get(DcMotor.class, Constants.NAME_ARM_RETRACT);
 
-        this.intakeServos = initializeAll(Constants.NAMES_INTAKE, CRServo.class,
-                (servo, i) -> servo.setDirection(Constants.DIRECTIONS_INTAKE[i])).toArray(new CRServo[0]);
+        this.intakeServos = initializeAll(Constants.NAMES_INTAKE, CRServo.class, this::intakeServoInit).toArray(new CRServo[0]);
 
-        this.colorRangeSensors = initializeAll(Constants.NAMES_ARM_COLOR_RANGE, ColorRangeSensor.class,
-                (sensor, i) -> sensor.enableLed(false)).toArray(new ColorRangeSensor[0]);
+        this.colorRangeSensors = initializeAll(Constants.NAMES_ARM_COLOR_RANGE, ColorRangeSensor.class, this::colorRangeSensorInit).toArray(new ColorRangeSensor[0]);
 
 
         // Configure hardware
@@ -157,6 +156,15 @@ public class ArmSubsystem extends SubsystemBase {
         return list;
     }
 
+    private void intakeServoInit(CRServo servo, int i) {
+        servo.setDirection(Constants.DIRECTIONS_INTAKE[i]);
+    }
+
+    private void colorRangeSensorInit(ColorRangeSensor sensor, int i) {
+        sensor.enableLed(Constants.SENSOR_CR_LED_ENABLED);
+        sensor.setGain(Constants.SENSOR_CR_GAIN);
+    }
+
 
     // Managing Named Arm Positions
 
@@ -195,8 +203,11 @@ public class ArmSubsystem extends SubsystemBase {
      * attempt to interrupt the current command by scheduling an empty instant command.
      */
     public void applyNamedPosition(String name, boolean interruptCommand, boolean lockSetPosition) {
-        lastSetPosition = name;
-        applyPosition(getNamedPosition(name), interruptCommand, lockSetPosition);
+        ArmPosition position = getNamedPosition(name);
+        if (position != null) {
+            lastSetPosition = name;
+            applyPosition(position, interruptCommand, lockSetPosition);
+        }
     }
 
     /**
@@ -206,7 +217,7 @@ public class ArmSubsystem extends SubsystemBase {
     public void applyPosition(ArmPosition position, boolean interruptCommand, boolean lockSetPosition) {
         if (isSetPositionLocked) return;
         lockSetPosition(lockSetPosition);
-        //if (interruptCommand) new InstantCommand(() -> {}, this).schedule(true);
+        if (interruptCommand) emptySubsystemCommand.schedule();
         if (position == null) return; // Skip the rest of this method if an existing position wasn't provided.
         applyRotationPosition(position.getRotationAngle());
         applyExtensionPosition(position.getExtensionPosition());
@@ -217,6 +228,7 @@ public class ArmSubsystem extends SubsystemBase {
         if (position.getAfter() != null) position.getAfter().run();
         invalidateTargets = false;
     }
+    private final Command emptySubsystemCommand = new InstantCommand(){{addRequirements(ArmSubsystem.this);}};
 
     public void moveMotorsToZero() {
         applyRotationPositionUnscaled(0);
@@ -309,6 +321,52 @@ public class ArmSubsystem extends SubsystemBase {
         applyRetractPositionUnscaled(Math.min(0, retractMotor.getCurrentPosition()));
     }
 
+    // Arm Commands
+
+    public Command automaticZeroRotationCommand() {
+        return new SequentialCommandGroup(
+                new InstantCommand(() -> setRotationPower(-0.3)),
+                new WaitCommand(250),
+                new InstantCommand(() -> setRotationPower(0)),
+                new WaitCommand(250),
+                new InstantCommand(this::zeroRotationMotor),
+                new InstantCommand(() -> applyNamedPosition("compact", false))
+        );
+    }
+
+    public Command moveToSubmersibleIntakeCommand() {
+        CommandBase command = new ConditionalCommand(
+                new SequentialCommandGroup(
+                        new InstantCommand(() -> applyNamedPosition("intake vertical", false)),
+                        new InstantCommand(() -> applyIntakeState(IntakeState.OUTTAKE)),
+                        new WaitCommand(400),
+                        new InstantCommand(() -> applyIntakeState(IntakeState.STOPPED))
+                ),
+                new InstantCommand(() -> applyNamedPosition("intake vertical", false)),
+                this::hasSampleInIntake);
+        command.addRequirements(this);
+        return command;
+    }
+
+    public Command submersibleIntakeDownCommand() {
+        CommandBase command = new SequentialCommandGroup(
+                new InstantCommand(() -> applyNamedPosition("intake vertical-down", false)),
+                new WaitCommand(500),
+                new InstantCommand(() -> applyNamedPosition("intake vertical", false))
+        );
+        command.addRequirements(this);
+        return command;
+    }
+
+    public Command compactOrZeroCommand() {
+        CommandBase command = new ConditionalCommand(
+                automaticZeroRotationCommand(),
+                new InstantCommand(() -> applyNamedPosition("compact", false)),
+                () -> "compact".equals(getLastSetPosition()));
+        command.addRequirements(this);
+        return command;
+    }
+
     public Command cycleHangCommand() {
         return new ConditionalCommand(
                 new InstantCommand(() -> applyNamedPosition("hang stage 2")),
@@ -316,11 +374,16 @@ public class ArmSubsystem extends SubsystemBase {
                 () -> "hang stage 1".equals(getLastSetPosition()));
     }
 
-    public Command intakeDownCommand() {
-        return new ConditionalCommand(
-                new InstantCommand(() -> applyNamedPosition("intake vertical-down")),
-                new InstantCommand(() -> applyNamedPosition("intake-down")),
-                () -> "intake vertical".equals(getLastSetPosition()));
+    /** Context-sensitive action for the base driver. */
+    public Command driverContextCommand() {
+        CommandBase command = new SelectCommand(new HashMap<Object, Command>() {{
+                    put("intake vertical", submersibleIntakeDownCommand());
+                    put("specimen low", new InstantCommand(() -> applyNamedPosition("specimen high")));
+                    put("specimen high", new InstantCommand(() -> applyNamedPosition("specimen low")));
+                }}, this::getLastSetPosition
+        );
+        command.addRequirements(this);
+        return command;
     }
 
     // Controlling the Intake
@@ -337,6 +400,16 @@ public class ArmSubsystem extends SubsystemBase {
         applyIntakeState(IntakeState.STOPPED);
     }
 
+    public void toggleIntake() {
+        if (intakeState == IntakeState.INTAKE) stopIntake();
+        else startIntake();
+    }
+
+    public void toggleOuttake() {
+        if (intakeState == IntakeState.OUTTAKE) stopIntake();
+        else startOuttake();
+    }
+
     /**
      * @see #hasSampleInIntake()
      */
@@ -349,34 +422,48 @@ public class ArmSubsystem extends SubsystemBase {
      */
     public void intakeIfHasSample() {
         if (shouldStopIntakeForSample()) {
-            cycleIntakeSmart();
+            runSmartIntakeCommand();
         }
     }
 
     /**
      * Cycle through possible actions of the intake depending on the state of the intake and robot.
-     * This will run as an uninterruptible command requiring this ArmSubsystem.
+     * <p>This command requires this ArmSubsystem. This method will not schedule the command if it's already running.</p>
      * <p>STOPPED: Start the intake</p>
      * <p>INTAKE: Stop the intake, move to the stow position, then wait briefly (to block consecutive activations)</p>
      * <p>OUTTAKE: Stop the intake, move to the stow position, then wait briefly (to block consecutive activations)</p>
-     * <p>The stow position can be customized.</p>
-     * @see #setSmartIntakeStowPosition(String)
+     * <p>The stow position can be customized. If not provided, defaults to "stow".</p>
+     * @see #runSmartIntakeCommand(String)
      */
-    public void cycleIntakeSmart() {
-        smartIntakeCommand.schedule(false);
+    public void runSmartIntakeCommand() {
+        runSmartIntakeCommand("stow");
     }
 
     /**
-     * Set the position used by the smart intake command to stow. This can be changed at any time.
-     * @see #cycleIntakeSmart()
+     * Same as {@link #runSmartIntakeCommand()}, but allows you to specify a custom stow position to go to.
      */
-    public void setSmartIntakeStowPosition(String newPositionName) {
-        smartIntakeStow.set(newPositionName);
+    public void runSmartIntakeCommand(String stowPositionName) {
+        smartIntakeStow = stowPositionName;
+        smartIntakeCommand.schedule();
     }
 
-    private Command composeSmartIntakeCommand() {
+    public Trigger notSmartIntakeScheduledT() {
+        return new Trigger(this::notSmartIntakeScheduled);
+        // This calls a method instead of the command directly so that the other method will read the smartIntakeCommand
+        // variable each time for the latest value instead of taking the value at the time the Trigger is created.
+    }
+
+    public boolean notSmartIntakeScheduled() {
+        return !smartIntakeCommand.isScheduled();
+    }
+
+    private String getSmartIntakeStowPosition() {
+        return smartIntakeStow;
+    }
+
+    public Command composeSmartIntakeCommand() {
         // wowza
-        ArmSubsystem subsystem = this;
+        final ArmSubsystem subsystem = this;
         CommandBase finalCommand = new SelectCommand(
                 new HashMap<Object, Command>() {{
                     put(IntakeState.STOPPED, new SequentialCommandGroup(
@@ -384,12 +471,12 @@ public class ArmSubsystem extends SubsystemBase {
                     ));
                     put(IntakeState.INTAKE, new SequentialCommandGroup(
                             new InstantCommand(subsystem::stopIntake),
-                            new InstantCommand(() -> subsystem.applyNamedPosition(smartIntakeStow.get(), false)),
+                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
                             new WaitCommand(500)
                     ));
                     put(IntakeState.OUTTAKE, new SequentialCommandGroup(
                             new InstantCommand(subsystem::stopIntake),
-                            new InstantCommand(() -> subsystem.applyNamedPosition(smartIntakeStow.get(), false)),
+                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
                             new WaitCommand(500)
                     ));
                 }},
@@ -451,15 +538,28 @@ public class ArmSubsystem extends SubsystemBase {
     public Command getRunRotationPowerCommand(double power) {
         return new RunMotorPowerCommand(rotationMotor, power);
     }
+    public Command getRunRotationPowerCommand(DoubleSupplier powerSupplier) {
+        return new RunMotorPowerContinuousCommand(rotationMotor, powerSupplier);
+    }
 
     public Command getRunExtensionPowerCommand(double power) {
         return new RunMotorPowerCommand(extensionMotor, power);
+    }
+    public Command getRunExtensionPowerCommand(DoubleSupplier powerSupplier) {
+        return new RunMotorPowerContinuousCommand(extensionMotor, powerSupplier);
     }
 
     public Command getRunRaisePowerCommand(double power) {
         // Lock the retraction motor to go down while the raise motor is active, otherwise they may pull against each other
         return new ParallelCommandGroup(
                 new RunMotorPowerCommand(raiseMotor, power),
+                new RunCommand(this::moveRetractToBottom)
+        );
+    }
+    public Command getRunRaisePowerCommand(DoubleSupplier powerSupplier) {
+        // Lock the retraction motor to go down while the raise motor is active, otherwise they may pull against each other
+        return new ParallelCommandGroup(
+                new RunMotorPowerContinuousCommand(raiseMotor, powerSupplier),
                 new RunCommand(this::moveRetractToBottom)
         );
     }
@@ -471,14 +571,22 @@ public class ArmSubsystem extends SubsystemBase {
                 new RunCommand(this::moveRaiseToBottom)
         );
     }
+    public Command getRunRetractPowerCommand(DoubleSupplier powerSupplier) {
+        // Lock the raise motor to go down while the retraction motor is active, otherwise they may pull against each other
+        return new ParallelCommandGroup(
+                new RunMotorPowerContinuousCommand(retractMotor, powerSupplier),
+                new RunCommand(this::moveRaiseToBottom)
+        );
+    }
 
-    class RunMotorPowerCommand implements Command {
+    class RunMotorPowerCommand extends CommandBase {
         private final DcMotor motor;
         private final double power;
 
         public RunMotorPowerCommand(DcMotor motor, double power) {
             this.motor = motor;
             this.power = power;
+            addRequirements(ArmSubsystem.this);
         }
 
         @Override
@@ -492,10 +600,32 @@ public class ArmSubsystem extends SubsystemBase {
             checkControlModeRunWithoutEncoder(motor);
             motor.setPower(0);
         }
+    }
+
+    class RunMotorPowerContinuousCommand extends CommandBase {
+        private final DcMotor motor;
+        private final DoubleSupplier powerSupplier;
+
+        public RunMotorPowerContinuousCommand(DcMotor motor, DoubleSupplier powerSupplier) {
+            this.motor = motor;
+            this.powerSupplier = powerSupplier;
+            addRequirements(ArmSubsystem.this);
+        }
 
         @Override
-        public Set<Subsystem> getRequirements() {
-            return Collections.emptySet();
+        public void initialize() {
+            checkControlModeRunWithoutEncoder(motor);
+        }
+
+        @Override
+        public void execute() {
+            motor.setPower(powerSupplier.getAsDouble());
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            checkControlModeRunWithoutEncoder(motor);
+            motor.setPower(0);
         }
     }
 
@@ -686,6 +816,17 @@ public class ArmSubsystem extends SubsystemBase {
         return isMotorAtTargetPosition(raiseMotor, threshold);
     }
 
+    /** @return Whether the rotation, extension, and raise motors are at their target positions. */
+    public boolean isArmAtTargetPosition() {
+        return isArmAtTargetPosition(Constants.ROTATION_TARGET_THRESHOLD, Constants.EXTENSION_TARGET_THRESHOLD, Constants.RAISE_TARGET_THRESHOLD);
+    }
+    /** @return Whether the rotation, extension, and raise motors are at their target positions. Thresholds measured in encoder ticks. */
+    public boolean isArmAtTargetPosition(int rotationThreshold, int extensionThreshold, int raiseThreshold) {
+        return isRotationAtTargetPosition(rotationThreshold)
+                && isExtensionAtTargetPosition(extensionThreshold)
+                && isRaiseAtTargetPosition(raiseThreshold);
+    }
+
 
     /** @return The angle that the wrist is pointing at, on a scale where 1 is up */
     public double getWristPosition() {
@@ -751,8 +892,21 @@ public class ArmSubsystem extends SubsystemBase {
     public Action yieldForRotationTarget() {
         return yieldForRotationTarget(Constants.ROTATION_TARGET_THRESHOLD);
     }
+    /** {@link #yieldForRotationTarget()} with a custom threshold for distance from target. Threshold is in encoder ticks. */
     public Action yieldForRotationTarget(int threshold) {
         return new YieldForMotorTarget(rotationMotor, threshold);
+    }
+
+    /**
+     * Generates a Road Runner Action that yields until the extension has reached its target position.
+     * Used exclusively for Road Runner autonomous routines.
+     */
+    public Action yieldForExtensionTarget() {
+        return yieldForExtensionTarget(Constants.EXTENSION_TARGET_THRESHOLD);
+    }
+    /** {@link #yieldForExtensionTarget()} with a custom threshold for distance from target. Threshold is in encoder ticks. */
+    public Action yieldForExtensionTarget(int threshold) {
+        return new YieldForMotorTarget(extensionMotor, threshold);
     }
 
     /**
@@ -762,8 +916,25 @@ public class ArmSubsystem extends SubsystemBase {
     public Action yieldForRaiseTarget() {
         return yieldForRaiseTarget(Constants.RAISE_TARGET_THRESHOLD);
     }
+    /** {@link #yieldForRaiseTarget()} with a custom threshold for distance from target. Threshold is in encoder ticks. */
     public Action yieldForRaiseTarget(int threshold) {
         return new YieldForMotorTarget(raiseMotor, threshold);
+    }
+
+    /**
+     * Generates a Road Runner Action that yields until the rotation, extension, and raise have all reached their target positions.
+     * Used exclusively for Road Runner autonomous routines.
+     */
+    public Action yieldForArmTarget() {
+        return yieldForArmTarget(Constants.ROTATION_TARGET_THRESHOLD, Constants.EXTENSION_TARGET_THRESHOLD, Constants.RAISE_TARGET_THRESHOLD);
+    }
+    /** {@link #yieldForArmTarget()} with custom thresholds for distance from target. Threshold is in encoder ticks. */
+    public Action yieldForArmTarget(int rotationThreshold, int extensionThreshold, int raiseThreshold) {
+        return new ParallelAction(
+                yieldForRotationTarget(rotationThreshold),
+                yieldForExtensionTarget(extensionThreshold),
+                yieldForRaiseTarget(raiseThreshold)
+        );
     }
 
     /**

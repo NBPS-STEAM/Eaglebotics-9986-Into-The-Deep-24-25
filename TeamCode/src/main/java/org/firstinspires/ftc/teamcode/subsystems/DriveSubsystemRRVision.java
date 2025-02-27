@@ -45,7 +45,7 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection = Constants.IMU_HUB_USB_DIRECTION;
 
         // drive model parameters
-        public double inPerTick = 121.75 / 4032.75;
+        public double inPerTick = 122.25 / 4071.75;
         public double lateralInPerTick = 125.75 / 3981.25;
         public double trackWidthTicks = 815.794386053208;
 
@@ -55,13 +55,13 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         public double kA = 0.00005;
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 50.0;
-        public double minProfileAccel = -30.0;
-        public Double maxProfileAccel = 50.0;
+        public double maxWheelVel = Constants.AUTO_DRIVE_VEL_MAX;
+        public double minProfileAccel = -Constants.AUTO_DRIVE_ACCEL_MAX;
+        public Double maxProfileAccel = Constants.AUTO_DRIVE_ACCEL_MAX;
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI * 1.2; // shared with path
-        public double maxAngAccel = Math.PI * 1.2;
+        public double maxAngVel = Constants.AUTO_DRIVE_ANG_VEL_MAX; // shared with path
+        public double maxAngAccel = Constants.AUTO_DRIVE_ANG_ACCEL_MAX;
 
         // path controller gains
         public double axialGain = 3.0;
@@ -88,14 +88,14 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
     public final LazyImu lazyImu;
 
     public final Localizer localizer;
+    public final VisionPortalSubsystem vps;
     public Pose2d pose;
 
-    /** Whether to use a Kalman filter to de-noise the results from absolute position localizer results (i.e. vision) */
-    public boolean denoiseAbsoluteLocalizer = true;
     private final KalmanFilter positionFilterX = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
     private final KalmanFilter positionFilterY = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
 
     private boolean isBlueAlliance = false;
+    private boolean isAllianceTrusted = false;
 
     private final LinkedList<Pose2d> poseHistory = new LinkedList<>();
 
@@ -106,9 +106,9 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
 
     /**
      * Create a DriveSubsystemRRVision with default autonomous driving parameters.
-     * <p>Make sure to use {@link #setIsBlueAlliance(boolean)} for alliance-aware features to use the right alliance
+     * <p>Make sure to use {@link #setIsBlueAlliance(boolean, boolean)} for alliance-aware features to use the right alliance
      * (default: red alliance)</p>
-     * @see #setIsBlueAlliance(boolean)
+     * @see #setIsBlueAlliance(boolean, boolean)
      */
     public DriveSubsystemRRVision(HardwareMap hardwareMap, VisionPortalSubsystem visionPortalSubsystem, Localizers localizer, Pose2d pose) {
         this(hardwareMap, visionPortalSubsystem, localizer, pose, new Params());
@@ -117,13 +117,14 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
     /**
      * Create a DriveSubsystemRRVision with custom autonomous driving parameters.
      * <p>If vision is not used, then visionPortalSubsystem may be left null.</p>
-     * <p>Make sure to use {@link #setIsBlueAlliance(boolean)} for alliance-aware features to use the right alliance
+     * <p>Make sure to use {@link #setIsBlueAlliance(boolean, boolean)} for alliance-aware features to use the right alliance
      * (default: red alliance)</p>
-     * @see #setIsBlueAlliance(boolean)
+     * @see #setIsBlueAlliance(boolean, boolean)
      */
     public DriveSubsystemRRVision(HardwareMap hardwareMap, VisionPortalSubsystem visionPortalSubsystem, Localizers localizer, Pose2d pose, Params parameters) {
         // Parameters
         PARAMS = parameters;
+        vps = visionPortalSubsystem;
 
         kinematics = new MecanumKinematics(
                 PARAMS.inPerTick * PARAMS.trackWidthTicks, PARAMS.inPerTick / PARAMS.lateralInPerTick);
@@ -168,11 +169,16 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         // Preserve previous heading
         Vector2d newPosition = pose.position;
         if (!ResetZeroState.shouldZeroDrive() && ResetZeroState.getPrevDrivePos() != null) newPosition = ResetZeroState.getPrevDrivePos();
+
         double newHeading = pose.heading.toDouble();
-        if (!ResetZeroState.shouldZeroHeading() && ResetZeroState.getPrevHeading() != null) newHeading = ResetZeroState.getPrevHeading();
+        if (ResetZeroState.shouldZeroHeading()) {
+            zeroDriverHeading();
+        } else if (ResetZeroState.getPrevHeading() != null) {
+            newHeading = ResetZeroState.getPrevHeading();
+            zeroDriverHeading(newHeading);
+        }
 
         this.pose = new Pose2d(newPosition, newHeading);
-        zeroDriverHeading(newHeading);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
@@ -181,8 +187,8 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
                 this.localizer = new DriveLocalizer(this);
                 break;
             case ENCODERS_WITH_VISION:
-                if (Constants.USE_GYRO_ESTIMATOR) visionPortalSubsystem.enableGyroLocalizer(this);
-                this.localizer = new VisionDriveLocalizer(this, visionPortalSubsystem);
+                if (Constants.USE_GYRO_ESTIMATOR) vps.enableGyroLocalizer(this);
+                this.localizer = new VisionDriveLocalizer(this, vps);
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported localizer chosen: " + localizer);
@@ -191,8 +197,13 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
     }
 
-    public void setIsBlueAlliance(boolean isBlueAlliance) {
+    /**
+     * Set the alliance to use for localization, etc.
+     * <p>If {@code trusted} is false, then the alliance may be automatically reobtained later.</p>
+     */
+    public void setIsBlueAlliance(boolean isBlueAlliance, boolean trusted) {
         this.isBlueAlliance = isBlueAlliance;
+        isAllianceTrusted = trusted;
         localizer.setAlliance(isBlueAlliance);
     }
 
@@ -250,6 +261,9 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         drive(-gamepad.left_stick_y, -gamepad.left_stick_x, gamepad.right_stick_x);
     }
     public void drive(double axial, double lateral, double yaw) {
+        axial *= setPowerMultiplier;
+        lateral *= setPowerMultiplier;
+        yaw *= setPowerMultiplier;
         QuadMotorValues<Double> drivePower;
         if (isFieldCentric) {
             drivePower = Calculations.mecanumDriveFieldCentric(axial, lateral, yaw, getDriverHeading());
@@ -262,157 +276,11 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
     }
 
     public void setDrivePowers(QuadMotorValues<Double> power) {
-        leftFront.setPower(power.getFrontLeftValue() * setPowerMultiplier);
-        rightFront.setPower(power.getFrontRightValue() * setPowerMultiplier);
-        leftBack.setPower(power.getBackLeftValue() * setPowerMultiplier);
-        rightBack.setPower(power.getBackRightValue() * setPowerMultiplier);
+        leftFront.setPower(power.getFrontLeftValue());
+        rightFront.setPower(power.getFrontRightValue());
+        leftBack.setPower(power.getBackLeftValue());
+        rightBack.setPower(power.getBackRightValue());
     }
-
-    public void setDrivePowers(PoseVelocity2d powers) {
-        MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(
-                PoseVelocity2dDual.constant(powers, 1));
-
-        double maxPowerMag = 1;
-        for (DualNum<Time> power : wheelVels.all()) {
-            maxPowerMag = Math.max(maxPowerMag, power.value());
-        }
-
-        leftFront.setPower(wheelVels.leftFront.get(0) / maxPowerMag * setPowerMultiplier);
-        leftBack.setPower(wheelVels.leftBack.get(0) / maxPowerMag * setPowerMultiplier);
-        rightBack.setPower(wheelVels.rightBack.get(0) / maxPowerMag * setPowerMultiplier);
-        rightFront.setPower(wheelVels.rightFront.get(0) / maxPowerMag * setPowerMultiplier);
-    }
-
-    /**
-     * This command wraps a Road Runner command to autonomously drive and score in the high basket before
-     * returning to the submersible zone.
-     * <p>I HIGHLY RECOMMEND that if this is used in teleop, such is done immediately after localizing with vision.
-     * Otherwise, the localization will almost certainly be off if it's relying only on encoders.</p>
-     */
-    public Command getDriveToBasketCommand(ArmSubsystem armSubsystem) {
-        Action[] actions = getDriveToBasketActions(armSubsystem);
-        return new SequentialCommandGroup(
-                new InstantCommand(armSubsystem::invalidateTargets),
-                new ParallelDeadlineGroup(
-                        new WaitUntilCommand(() -> isArmSubsystemAtTarget(armSubsystem)),
-                        new RoadRunnerCommand(actions[0])
-                ),
-                new RoadRunnerCommand(actions[1])
-        );
-        //return new DriveToBasketCommand(armSubsystem);
-    }
-
-    private boolean isArmSubsystemAtTarget(ArmSubsystem armSubsystem) {
-        return armSubsystem.isRotationAtTargetPosition() && armSubsystem.isRaiseAtTargetPosition();
-    }
-
-    private Action[] getDriveToBasketActions(ArmSubsystem armSubsystem) {
-        Pose2d approachPos = Constants.POS_BASKETS_APPROACH;
-        Pose2d scorePos = Constants.POS_BASKETS_SCORE;
-        Pose2d intakePos = Constants.POS_INTAKE_APPROACH;
-        return new Action[] {
-                // First path (approach basket)
-                actionBuilder(intakePos)
-                        .stopAndAdd(() -> armSubsystem.lockSetPosition(false))
-                        .stopAndAdd(() -> armSubsystem.applyNamedPosition("basket high", true, true))
-                        .strafeToLinearHeading(approachPos.position, approachPos.heading)
-                        .build(),
-
-                // Second path (score in basket)
-                actionBuilder(approachPos)
-                        .strafeToLinearHeading(scorePos.position, scorePos.heading)
-                        .stopAndAdd(armSubsystem::startOuttake)
-                        .waitSeconds(0.3)
-                        .afterTime(0.0, () -> armSubsystem.lockSetPosition(false))
-                        .afterTime(0.5, () -> armSubsystem.applyNamedPosition("stow"))
-                        .strafeToLinearHeading(intakePos.position, intakePos.heading)
-                        .build()
-        };
-    }
-
-    /*class DriveToBasketCommand implements Command {
-        @Override
-        public Set<Subsystem> getRequirements() {
-            return Collections.singleton(DriveSubsystemRRVision.this);
-        }
-
-        public DriveToBasketCommand(ArmSubsystem armSubsystem) {
-            this.armSubsystem = armSubsystem;
-        }
-
-        // Configuration variables
-        private final ArmSubsystem armSubsystem;
-        private final TelemetryPacket packet = new TelemetryPacket();
-
-        // Running variables
-        private Pose2d approachPos;
-        private Pose2d scorePos;
-        private Pose2d intakePos;
-        private Action path1;
-        private boolean runAgain1;
-        private Action path2;
-        private boolean runAgain2;
-
-        @Override
-        public void initialize() {
-            if (isBlueAlliance) {
-                approachPos = Constants.POS_BASKETS_APPROACH_BLUE;
-                scorePos = Constants.POS_BASKETS_SCORE_BLUE;
-                intakePos = Constants.POS_INTAKE_APPROACH_BLUE;
-            } else {
-                approachPos = Constants.POS_BASKETS_APPROACH_RED;
-                scorePos = Constants.POS_BASKETS_SCORE_RED;
-                intakePos = Constants.POS_INTAKE_APPROACH_RED;
-            }
-            path1 = null;
-            runAgain1 = true;
-            path2 = null;
-            runAgain2 = true;
-        }
-
-        @Override
-        public void execute() {
-            // This command will run the 'first' path to approach the baskets while the arm raises,
-            // and then abruptly switch to the 'second' path to score as soon as the arm is ready.
-            if (path1 == null) { // If the first path hasn't started yet...
-                // Compose and start the first path
-                path1 = actionBuilder(intakePos)
-                        .strafeToLinearHeading(approachPos.position, approachPos.heading)
-                        .build();
-
-                armSubsystem.lockSetPosition(false);
-                armSubsystem.applyNamedPosition("basket high", true, true);
-                runAgain1 = path1.run(packet);
-            } else if (path2 == null) { // If the second path hasn't started yet...
-                if (!armSubsystem.isRotationAtTargetPosition() || !armSubsystem.isRaiseAtTargetPosition()) {
-                    if (runAgain1) {
-                        runAgain1 = path1.run(packet);
-                    }
-                } else { // If both motors are at their target positions...
-                    // Compose and start the second path
-                    path2 = actionBuilder(approachPos)
-                            .strafeToLinearHeading(scorePos.position, scorePos.heading)
-                            .stopAndAdd(armSubsystem::startOuttake)
-                            .waitSeconds(0.3)
-                            .afterTime(0.5, () -> {
-                                armSubsystem.lockSetPosition(false);
-                                armSubsystem.applyNamedPosition("stow");
-                            })
-                            .strafeToLinearHeading(intakePos.position, intakePos.heading)
-                            .build();
-                    runAgain2 = path2.run(packet);
-                }
-            } else if (runAgain2) { // If the second path is still running...
-                runAgain2 = path2.run(packet);
-            }
-        }
-
-        @Override
-        public boolean isFinished() {
-            // End when the second path finishes.
-            return !runAgain2;
-        }
-    }*/
 
     // END OF DRIVER CONTROLS
 
@@ -614,19 +482,27 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         Twist2dDual<Time> twist = localizer.update();
         Pose2d absPose = localizer.getAbsolutePosition();
 
+        if (!isAllianceTrusted) {
+            if (localizer.getLastUpdateStatus() == Localizers.Status.DUBIOUS_ALLIANCE) {
+                setIsBlueAlliance(!isBlueAlliance, false);
+                absPose = localizer.calculateAbsolutePosition();
+            }
+        }
+
         if (absPose == null) {
             // No absolute pose available (i.e. no vision)
             pose = pose.plus(twist.value());
-            if (denoiseAbsoluteLocalizer) {
+            if (Constants.ABS_LOCALIZER_DENOISE) {
                 // The position filter updates continuously, so update it even though it's not used here
                 positionFilterX.estimate(pose.position.x);
                 positionFilterY.estimate(pose.position.y);
             }
+            pose = new Pose2d(pose.position, getDriverHeading() + Math.PI / 2); // gyro hack
         } else {
             // Absolute pose is available (i.e. vision success)
             double posX = absPose.position.x;
             double posY = absPose.position.y;
-            if (denoiseAbsoluteLocalizer) {
+            if (Constants.ABS_LOCALIZER_DENOISE) {
                 posX = positionFilterX.estimate(posX);
                 posY = positionFilterY.estimate(posY);
             }
@@ -684,16 +560,11 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
         telemetry.addData("Heading (gyro)", getDriverHeading());
     }
 
-    public class TelemetryLoggerCommand implements Command {
+    public class TelemetryLoggerCommand extends CommandBase {
         private final Telemetry telemetry;
 
         public TelemetryLoggerCommand(Telemetry telemetry) {
             this.telemetry = telemetry;
-        }
-
-        @Override
-        public Set<Subsystem> getRequirements() {
-            return Collections.emptySet();
         }
 
         @Override

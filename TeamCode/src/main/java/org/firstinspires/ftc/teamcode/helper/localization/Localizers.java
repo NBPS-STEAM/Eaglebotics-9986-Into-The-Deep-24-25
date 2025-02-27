@@ -9,4 +9,9 @@ public enum Localizers {
         ENCODERS,
         VISION,
     }
+
+    public enum Status {
+        OK,
+        DUBIOUS_ALLIANCE,
+    }
 }

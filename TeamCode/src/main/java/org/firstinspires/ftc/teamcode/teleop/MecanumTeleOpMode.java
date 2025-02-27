@@ -199,7 +199,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
         // These named set positions are defined in the ArmSubsystem class.
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
-        bindToButtons(armGamepad, armSubsystem::cycleIntakeSmart, Button.B); // Intelligently cycle intake states
+        combineButtons(armGamepad, Button.B).and(armSubsystem.notSmartIntakeScheduledT()).whenActive(() -> armSubsystem.runSmartIntakeCommand()); // Intelligently cycle intake states
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake-down"), Button.Y); // Move arm to 'intake-down' set position
 
         bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake ground")); // Move arm to 'intake ground' set position
@@ -317,9 +317,9 @@ public class MecanumTeleOpMode extends CommandOpMode {
      */
     public Trigger getStickTrigger(DoubleSupplier joystickSupplier, boolean whenAbove) {
         if (whenAbove) {
-            return new Trigger(() -> joystickSupplier.getAsDouble() > Constants.STICK_COMMAND_THRESHOLD);
+            return new Trigger(() -> joystickSupplier.getAsDouble() > Constants.ANALOG_COMMAND_THRESHOLD);
         } else {
-            return new Trigger(() -> joystickSupplier.getAsDouble() < -Constants.STICK_COMMAND_THRESHOLD);
+            return new Trigger(() -> joystickSupplier.getAsDouble() < -Constants.ANALOG_COMMAND_THRESHOLD);
         }
     }
 

@@ -29,18 +29,28 @@
 
 package org.firstinspires.ftc.teamcode.autonomous;
 
-import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.roadrunner.Action;
-import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.ftc.Actions;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.*;
+import com.arcrobotics.ftclib.command.*;
+import com.arcrobotics.ftclib.command.button.Trigger;
+import com.arcrobotics.ftclib.gamepad.GamepadEx;
+import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
-import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
+import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
+import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
+import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
+import org.firstinspires.ftc.teamcode.teleop.MecautoTeleOpMode;
+import org.jetbrains.annotations.NotNull;
+
+import java.lang.Math;
+import java.util.Arrays;
+import java.util.function.Supplier;
 
 /*
  * This file contains a simple example "OpMode" for driving a robot.
@@ -51,7 +61,8 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
  * motor/servo/etc. in the Driver Station for the code to find your devices.
  *
  * This code goes from the starting position (third tile, ~60 in. from the right wall and facing away from the back wall),
- * scores a preloaded specimen on the high bar, and then goes to park in the observation zone.
+ * scores a preloaded specimen on the high bar, collects and scores a second specimen from the observation zone on the
+ * high bar, and then goes to park in the observation zone.
  *
  * Before starting this OpMode, the arm lift must be in its lowest position and the extension fully
  * retracted. The robot must also be facing forward.
@@ -71,53 +82,197 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
-@Config
-@Autonomous(name="Specimens V1 Auto-OpMode (1 specimen)", group="Autonomous OpMode")
-public class SpecimensV1AutoOpMode extends LinearOpMode {
+@Autonomous(name="Specimens V1 Auto-OpMode (2-5 specimens)", group="Autonomous OpMode")
+public class SpecimensV1AutoOpMode extends CommandOpMode {
+
+    // Variables
+    private static final Pose2d INITIAL_POSE = new Pose2d(7, -63.5, Math.PI / 2);
+    private static final double INTAKE_X = 48;
+    private static final double INTAKE_Y = -50;
+    private static final double INTAKE_HEADING = Math.toRadians(4);
+    private static final double APPROACH_Y = -48;
+    private static final double SCORE_Y = -35;
 
     // Hardware Variables
-    private MecanumDriveTune1 drive;
+    private DriveSubsystemRRVision drive;
     private ArmSubsystem armSubsystem;
+    private VisionPortalSubsystem visionPortalSubsystem;
 
 
     // This is run when the "INIT" button is pressed on the Driver Station.
     @Override
-    public void runOpMode() {
+    public void initialize() {
         // Reset zero state; autonomous opmodes should always zero the robot
         ResetZeroState.resetZeroState();
-        // Initialize MecanumDrive at a particular pose
-        Pose2d initialPose = new Pose2d(0, -24, 0);
-        drive = new MecanumDriveTune1(hardwareMap, initialPose);
+
+        // Do which routine?
+        // Path is NOT generated here.
+        // This is asked all the way up here because drive subsystem params depend on this.
+        boolean useV2 = DriverPrompter.queryBoolean(this, false, "Do the full 5-specimen routine?", "Do full routine");
+        Supplier<Command> pathGenerator;
+        DriveSubsystemRRVision.Params params = new DriveSubsystemRRVision.Params();
+        if (useV2) {
+            pathGenerator = this::getSpecimensV2;
+            params.maxWheelVel = Constants.AUTO_DRIVE_VEL_MAX;
+            params.minProfileAccel = -Constants.AUTO_DRIVE_ACCEL_MAX;
+            params.maxProfileAccel = Constants.AUTO_DRIVE_ACCEL_MAX;
+            params.maxAngVel = Constants.AUTO_DRIVE_ANG_VEL_MAX;
+            params.maxAngAccel = Constants.AUTO_DRIVE_ANG_ACCEL_MAX;
+        } else {
+            pathGenerator = this::getSpecimensV1;
+        }
+
         // Initialize hardware
-        armSubsystem = new ArmSubsystem(hardwareMap, Constants.ARM_ROTATION_POWER_AUTO, Constants.ARM_EXTENSION_POWER_AUTO, Constants.ARM_RAISE_POWER_AUTO);
+        armSubsystem = new ArmSubsystem(hardwareMap, 0.4, 0.5, 1.0);
+        visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, Constants.CAM_DO_STREAM);
 
-        // Generate paths
-        Action path = drive.actionBuilder(initialPose)
-                // Score preload
-                .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.INTAKE))
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen high"))
-                .strafeTo(new Vector2d(24, -20))
-                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("specimen low"))
-                .stopAndAdd(armSubsystem.yieldForRotationTarget())
-                .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE))
-                .waitSeconds(0.4)
+        // Initialize MecanumDrive at a particular pose
+        drive = new DriveSubsystemRRVision(hardwareMap, visionPortalSubsystem,
+                Localizers.ENCODERS_WITH_VISION, INITIAL_POSE, params);
 
-                // Park in observation zone
-                .strafeTo(new Vector2d(6, -24))
-                .afterTime(0, () -> armSubsystem.applyNamedPosition("stow"))
-                .strafeTo(new Vector2d(6, -60))
-                .build();
+        // Generate path
+        Command pathCommand = pathGenerator.get().andThen(new InstantCommand(this::reportFinished));
 
 
-        // Wait until start
-        waitForStart();
-        if (isStopRequested()) return;
+        // Schedule commands
+
+        // When this opmode starts, run the path
+        pathCommand.schedule(false);
+
+        // When the intake intakes a sample, stop the intake
+        new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::stopIntake);
+
+        // At all times, update the telemetry log
+        drive.new TelemetryLoggerCommand(telemetry).schedule(false);
 
 
-        // Mark subsystems to not zero again once the next opmode begins (teleop)
-        ResetZeroState.markToNotZeroOnInit();
+        // Get driver configuration
+        // This must be done last, as it waits for user input (which could take until the end of init)
 
-        // Execute autonomous routine
-        Actions.runBlocking(path);
+        // Wait until camera is ready (this will make it obvious if it doesn't activate)
+        MecautoTeleOpMode.sleepForVisionPortal(this, visionPortalSubsystem, telemetry);
+
+        // Alliance
+        drive.setIsBlueAlliance(DriverPrompter.queryAlliance(this), DriverPrompter.wasAllianceFromDriver());
+
+        telemetry.addLine("Specimens V1 Auto Ready!");
+        telemetry.update();
+    }
+
+
+    // This runs when the routine ends or is stopped. Look inside the CommandOpMode class to see how it works.
+    // Don't forget to call super.reset() to properly shutdown the opmode!
+    @Override
+    public void reset() {
+        ResetZeroState.markToNotZeroOnInit(drive.pose);
+        super.reset();
+    }
+
+
+    private void reportFinished() {
+        telemetry.addData("Finished! Time", getRuntime()).setRetained(true);
+        telemetry.update();
+    }
+
+    private Command getSpecimensV1() {
+        return new SequentialCommandGroup(
+                composeScoreCommand(8),
+                composeIntakeCommand(),
+                composeScoreCommand(8), //TODO: MIGHT NOT WORK (CHANGE TO 0 IF NOT)
+                composeRetrievalCommand()
+        );
+    }
+
+    private Command getSpecimensV2() {
+        return new SequentialCommandGroup(
+                composeScoreCommand(8),
+                composeRetrievalCommand(),
+                RoadRunnerCommand.lazyStrafeTo(drive, new Vector2d(-9, INTAKE_Y+4), 6),
+                composeIntakeCommand(),
+                composeScoreCommand(2),
+                composeIntakeCommand(),
+                composeScoreCommand(-4),
+                composeIntakeCommand(),
+                composeScoreCommand(-10),
+                composeIntakeCommand(),
+                composeScoreCommand(-16),
+                composeParkCommand()
+        );
+    }
+
+    private Command composeIntakeCommand() {
+        return new SequentialCommandGroup(
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose).turnTo(INTAKE_HEADING).build()),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground")),
+                new ParallelRaceGroup(
+                        RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(INTAKE_X, INTAKE_Y, INTAKE_HEADING), 5),
+                        new WaitUntilCommand(armSubsystem::hasSampleInIntake)
+                )
+        );
+    }
+
+    private Command composeScoreCommand(double alignX) {
+        return new SequentialCommandGroup(
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("specimen low")),
+                RoadRunnerCommand.strafeToXLinearHeading(drive, alignX, Math.PI / 2),
+                new ParallelDeadlineGroup(
+                        RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(alignX, SCORE_Y, Math.PI / 2), 10),
+                        new SequentialCommandGroup(
+                                new WaitUntilCommand(() -> drive.pose.position.y > APPROACH_Y),
+                                new InstantCommand(() -> armSubsystem.applyNamedPosition("specimen high"))
+                        )
+                ),
+                new InstantCommand(() -> armSubsystem.applyExtensionPosition(0)),
+                RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(-3, INTAKE_Y+4, Math.PI / 2))
+        );
+    }
+
+    private Command composeParkCommand() {
+        return new SequentialCommandGroup(
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("stow")),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose).strafeTo(new Vector2d(INTAKE_X+12, INTAKE_Y-6)).build())
+        );
+    }
+
+    private Command composeRetrievalCommand() {
+        // Define keypoint positions
+        final double retYFar = -16;
+        final double retYNear = -60;
+        final double retX1 = 38;
+        final double retX2 = 42;
+        final double retX3 = 53;
+        //final double retX4 = 58;
+
+        final VelConstraint fastVel =
+                new MinVelConstraint(Arrays.asList(
+                        drive.kinematics.new WheelVelConstraint(80),
+                        new AngularVelConstraint(Math.PI * 2)
+                ));
+        final AccelConstraint fastAccel =
+                new ProfileAccelConstraint(-40, 40);
+
+        // Compose sample retrieval command
+        return new SequentialCommandGroup(
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("compact")),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, -48), 2, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, retYFar+20), 20, fastVel, fastAccel),
+
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar), 5, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYNear), 20, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar+20), 20, fastVel, fastAccel),
+
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar), 5, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYNear), 20, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar+20), 20, fastVel, fastAccel),
+
+                RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(retX3, retYFar, Math.PI * 3 / 8), fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(retX3, retYNear, Math.PI * 3 / 8), 20, fastVel, fastAccel)
+        );
+    }
+
+    private Pose2d forwardPose(double x, double y) {
+        return new Pose2d(x, y, Math.PI / 2);
     }
 }

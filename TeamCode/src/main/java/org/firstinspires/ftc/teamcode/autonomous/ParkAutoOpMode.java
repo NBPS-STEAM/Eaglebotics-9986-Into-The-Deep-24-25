@@ -101,19 +101,15 @@ public class ParkAutoOpMode extends CommandOpMode {
                 .build();
 
 
-        // Wait until start (remnant from before this was command-based)
-        //waitForStart();
-        //if (isStopRequested()) return;
-
-
-        // Mark subsystems to not zero again once the next opmode begins (teleop)
-        new Trigger(this::isStopRequested).whenActive(this::markToNotZeroWithPose);
-
         // Execute autonomous routine
         new RoadRunnerCommand(path).schedule(true);
     }
 
-    private void markToNotZeroWithPose() {
-        ResetZeroState.markToNotZeroOnInit(drive.pose.position, drive.pose.heading.toDouble());
+    // This runs when the routine ends or is stopped. Look inside the CommandOpMode class to see how it works.
+    // Don't forget to call super.reset() to properly shutdown the opmode!
+    @Override
+    public void reset() {
+        ResetZeroState.markToNotZeroOnInit(drive.pose);
+        super.reset();
     }
 }

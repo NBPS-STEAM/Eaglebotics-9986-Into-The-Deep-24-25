@@ -29,6 +29,8 @@
 
 package org.firstinspires.ftc.teamcode.teleop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
@@ -36,7 +38,6 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys.Button;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TestingSubsystem;
 
 /*
@@ -92,11 +93,7 @@ public class TestingTeleOpMode extends CommandOpMode {
     public void initialize() {
         // Initialize hardware variables
         gamepad = new GamepadEx(gamepad1);
-        testingSubsystem = new TestingSubsystem(hardwareMap, telemetry);
-
-        // EMERGENCY GAMEPAD 2 DRIVING
-        //DriveSubsystem driveSubsystem = new DriveSubsystem(hardwareMap);
-        //driveSubsystem.setDefaultCommand(new RunCommand(() -> driveSubsystem.drive(gamepad2), driveSubsystem));
+        testingSubsystem = new TestingSubsystem(hardwareMap, new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()));
 
 
         // Controller bindings
