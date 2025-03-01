@@ -54,6 +54,9 @@ public class DriverPrompter {
      * <p>Blocks until either a response is received or init ends. THIS SHOULD ALWAYS BE RUN LAST IN INITIALIZATION,
      * as it waits for user input and could potentially hang until the end of init.</p>
      * <p>The result of this is stored in a static variable so that the selected alliance persists between opmodes.</p>
+     * <p>The alliance name displayed on the Driver Hub will automatically update with the stored alliance color.</p>
+     * @see #isOnBlueAlliance()
+     * @see #setOnBlueAlliance(boolean)
      */
     public static boolean queryAlliance(LinearOpMode opMode) {
         Gamepad gamepad = opMode.gamepad1;
@@ -79,7 +82,7 @@ public class DriverPrompter {
         allianceFromDriver = button != null;
         if (allianceFromDriver) isBlueAlliance = button;
 
-        opMode.telemetry.addData("Your alliance", getCurrentAllianceName()).setRetained(true);
+        opMode.telemetry.addData("Your alliance", DriverPrompter::getCurrentAllianceName).setRetained(true);
         opMode.telemetry.update();
 
         return isOnBlueAlliance();
@@ -96,6 +99,13 @@ public class DriverPrompter {
      */
     public static boolean isOnBlueAlliance() {
         return isBlueAlliance;
+    }
+
+    /**
+     * Manually set the stored alliance color.
+     */
+    public static void setOnBlueAlliance(boolean isBlueAlliance) {
+        DriverPrompter.isBlueAlliance = isBlueAlliance;
     }
 
     /**

@@ -94,14 +94,14 @@ public class Constants {
     public static       double    DRIVE_TOUCHPAD_TURN_SENSITIVITY   = 5.0; // The sensitivity of touchpad driving in turning
 
     public static final double    ARM_ROTATION_POWER          = 0.5; // The amount of power that the arm rotates with in teleop
-    public static final double    ARM_EXTENSION_POWER         = 0.6; // The amount of power that the arm extends/retracts with in teleop
+    public static final double    ARM_EXTENSION_POWER         = 0.8; // The amount of power that the arm extends/retracts with in teleop
     public static final double    ARM_RAISE_POWER             = 1.0; // The amount of power that the arm rises with
     public static final double    ARM_RETRACT_POWER           = 1.0; // The amount of power that the arm lowers with (only used for hang)
 
-    public static final double    ARM_ROTATION_POWER_MANUAL   = 0.8; // The amount of power that the arm rotates with (MANUAL CONTROL)
-    public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // The amount of power that the arm extends/retracts with (MANUAL CONTROL)
-    public static final double    ARM_RAISE_POWER_MANUAL      = 0.5; // The amount of power that the arm rises/lowers with (MANUAL CONTROL)
-    public static final double    ARM_WRIST_RATE_MANUAL       = 0.02; // The rate that the wrist turns at while manually offsetting it (MANUAL CONTROL)
+    public static final double    ARM_ROTATION_POWER_MANUAL   = 0.8; // (NOT USED IN LATEST) The amount of power that the arm rotates with (MANUAL CONTROL)
+    public static final double    ARM_EXTENSION_POWER_MANUAL  = 0.5; // (NOT USED IN LATEST) The amount of power that the arm extends/retracts with (MANUAL CONTROL)
+    public static final double    ARM_RAISE_POWER_MANUAL      = 0.5; // (NOT USED IN LATEST) The amount of power that the arm rises/lowers with (MANUAL CONTROL)
+    public static final double    ARM_WRIST_RATE_MANUAL       = 0.03; // The rate that the wrist turns at while manually offsetting it (MANUAL CONTROL)
 
     public static final double    INTAKE_POWER                = 1.0; // The power of the intake when intaking on a scale of -1 to 1
     public static final double    OUTTAKE_POWER               = -0.3; // The power of the intake when outtaking on a scale of -1 to 1
@@ -126,9 +126,15 @@ public class Constants {
     public static       double    AUTO_DRIVE_ANG_VEL_MAX      = Math.PI; // The default maximum angular velocity of autonomous driving using DriveSubsystemRRVision
     public static       double    AUTO_DRIVE_ANG_ACCEL_MAX    = Math.PI; // The default maximum angular acceleration of autonomous driving using DriveSubsystemRRVision
 
-    public static final double    LOCALIZATION_VISION_RANGE         = 200.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
-    //public static       double    LOCALIZATION_LINEAR_THRESHOLD_SQR = Double.POSITIVE_INFINITY;//9.0; // The maximum speed at which the camera can be used to localize (squared)
-    //public static       double    LOCALIZATION_ANGULAR_THRESHOLD    = Double.POSITIVE_INFINITY;//Math.PI * 0.5; // The maximum angular speed at which the camera can be used to localize
+    public static       double    AUTO_DRIVE_POS_TOLERANCE    = 1.5; // The positional tolerance of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_VEL_TOLERANCE    = 2; // The velocity tolerance of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_ANG_TOLERANCE    = Math.toRadians(4); // The angular tolerance of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_ANGVEL_TOLERANCE = Math.toRadians(4); // The angular velocity tolerance of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_TOLERANCE_TIMEOUT = 2.0; // The maximum time that can be spent correcting the end of a path in autonomous driving using DriveSubsystemRRVision
+
+    public static final double    LOCALIZATION_VISION_RANGE         = 72.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
+    //public static       double    LOCALIZATION_LINEAR_THRESHOLD     = 50.0; // The maximum speed at which the camera can be used to localize
+    //public static       double    LOCALIZATION_ANGULAR_THRESHOLD    = Math.PI * 0.6; // The maximum angular speed at which the camera can be used to localize
 
     // Filter constants for de-noising the absolute localizer in DriveSubsystemRRVision
     // See the "Least Squares + Kalman Filter" section for more info: https://www.ctrlaltftc.com/homeostasis-by-thermal-equilibrium/state-estimation-and-filters
@@ -183,7 +189,7 @@ public class Constants {
     public static       int                CAM_SIZE_X      = 1280; // Width (pixels) of the camera's resolution (must be a supported resolution)
     public static       int                CAM_SIZE_Y      = 720;  // Height (pixels) of the camera's resolution (must be a supported resolution)
     public static       float              CAM_DECIMATION  = 3; // To be honest, I'm not sure what this does. More info in VisionPortalSubsystem.initAprilTag()
-    public static       long               CAM_EXPOSURE_MS = 1; // The preferred exposure time of the camera
+    public static       long               CAM_EXPOSURE_MS = 800; // (MICROSECONDS) The preferred exposure time of the camera
 
     // Camera tuning
     // For new global-shutter camera with black 3D-printed case:
@@ -215,7 +221,7 @@ public class Constants {
 
     // These are the positions for the RED alliance and will be automatically mirrored for the blue alliance.
     //public static final Pose2d POS_BASKETS_APPROACH     = new Pose2d(-47.68, -40, Math.toRadians(-90));
-    public static final Pose2d POS_BASKETS_SCORE        = new Pose2d(-55.92, -53.37, Math.toRadians(-121.196));
+    public static final Pose2d POS_BASKETS_SCORE        = new Pose2d(-55.75, -53.25, Math.toRadians(-140));
     public static final Pose2d POS_INTAKE_APPROACH      = new Pose2d(-40, 0, Math.toRadians(-90));
 
     public static final Pose2d POS_SPECIMEN_APPROACH    = new Pose2d(35, -42.8, Math.toRadians(-43.5));

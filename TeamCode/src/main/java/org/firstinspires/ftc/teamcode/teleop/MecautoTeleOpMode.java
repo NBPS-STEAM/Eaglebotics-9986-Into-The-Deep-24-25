@@ -45,8 +45,6 @@ import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.*;
 
-import java.util.Collections;
-import java.util.Set;
 import java.util.function.DoubleSupplier;
 
 /*
@@ -103,7 +101,7 @@ import java.util.function.DoubleSupplier;
  * East (B/○) button    |   Drive at slow speed
  * Right trigger        |   Lower intake in submersible or toggle height for specimen scoring
  *
- * Left trigger         |   Automatically drive to score (an AprilTag must be visible)
+ * Left trigger         |   Automatically drive to score (an AprilTag must be visible) (for samples, arm must be at 'basket high' position)
  * Left bumper          |   Automatically drive to intake a specimen from the observation zone (specimen mode only) (an AprilTag must be visible)
  * Right bumper         |   Stop automatically driving (can also be done by moving either stick)
  *
@@ -115,18 +113,20 @@ import java.util.function.DoubleSupplier;
  * Select button        |   Manually reverse retraction motor (release for going up)
  *
  * The controller rumbles a little while an AprilTag is visible to the robot and rumbles more during auto driving. This is required to start autonomous driving.
- * The alliance color must be correct for autonomous driving to work. The current alliance color is shown on the controller's LEDs.
+ * The alliance color must be correct for autonomous driving to work.
+ * The current alliance color is shown on the controller's LEDs. The color will be lighter if specimen mode is enabled.
  * Alliance color and specimen mode can also be set during init. This is preferred.
  *
  *
  * Controller 2 (arm driver):
  * REMEMBER:
- * IMPORTANT SAMPLE CONTROLS:   A, X, (D-RIGHT, B, RB)
+ * IMPORTANT SAMPLE CONTROLS:   A, X, (D-RIGHT, B, RB, A-A)
  * IMPORTANT SPECIMEN CONTROLS: (A, X, B), (Y, D-UP, LS-UP)
  *
- * South (A/X) button   |   Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
+ * South (A/X) button   |   When intaking at submersible: Move arm to 'stow' set position
+ * South (A/X) button   |   Otherwise: Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
  * East (B/○) button    |   Toggle outtake
- * West (X/□) button    |   Move arm to 'intake vertical' set position (outtakes if has sample)
+ * West (X/□) button    |   Move arm to 'intake vertical' set position for submersible (outtakes if has sample)
  * North (Y/Δ) button   |   Move arm to 'intake ground' set position
  * Left bumper          |   Toggle intake
  * Right bumper         |   Unlock arm subsystem (set positions cannot be applied while locked)
@@ -136,6 +136,7 @@ import java.util.function.DoubleSupplier;
  * D-pad left button    |   Move arm to 'basket low' set position (locks arm subsystem)
  * Start button         |   Move arm to 'hang stage 1' position, then press again to move to 'hang stage 2' position
  * Select button        |   Move arm to 'stow' set position
+ * Right trigger        |   Same as base driver (lower intake in submersible or toggle height for specimen scoring)
  *
  * Left stick up        |   Manually rotate arm up
  * Left stick down      |   Manually rotate arm down
@@ -211,7 +212,10 @@ public class MecautoTeleOpMode extends CommandOpMode {
         bindToButtons(baseGamepad, driveSubsystem::setSlowSpeed, Button.B); // Drive at slow speed
 
         // Driver Context Action
-        getGamepadTrigger(armGamepad, GamepadKeys.Trigger.RIGHT_TRIGGER).whenActive(armSubsystem.driverContextCommand()); // Lower intake in submersible or toggle height for specimen scoring
+        Command driverContextCommand = armSubsystem.driverContextCommand();
+        Trigger noDriverContextCommand = new Trigger(() -> !driverContextCommand.isScheduled());
+        getGamepadTrigger(baseGamepad, GamepadKeys.Trigger.RIGHT_TRIGGER)
+                .and(noDriverContextCommand).whenActive(driverContextCommand); // Lower intake in submersible or toggle height for specimen scoring
 
         // Autonomous Driving
         Command autoScoreSampleCommand = autoCommands.getScoreSampleCommand();
@@ -226,9 +230,10 @@ public class MecautoTeleOpMode extends CommandOpMode {
         Trigger lbVision = combineButtons(baseGamepad, Button.LEFT_BUMPER).and(visionTrigger);
 
         // Automatically drive to score (an AprilTag must be visible)
-        // Scoring samples
+        // Scoring samples (arm must be at 'basket high' position)
         ltVision.and(notSpecimenModeTrigger)
                 .and(new Trigger(() -> !autoScoreSampleCommand.isScheduled()))
+                .and(new Trigger(() -> armSubsystem.wasLastSetPosition("basket high")))
                 .and(new Trigger(() -> armSubsystem.isArmAtTargetPosition(50, 50, 50)))
                 .whenActive(autoScoreSampleCommand);
         // Scoring specimens
@@ -270,10 +275,13 @@ public class MecautoTeleOpMode extends CommandOpMode {
 
         // Apply Set Positions
         // These named set positions are defined in the ArmSubsystem class.
-        combineButtons(armGamepad, Button.A).whenActive(andThenRumble(armSubsystem.compactOrZeroCommand(), armGamepad)); // Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
+        combineButtons(armGamepad, Button.A).whenActive(andThenRumble(armSubsystem.compactStowOrZeroCommand(), armGamepad)); // Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
         combineButtons(armGamepad, Button.X).whenActive(armSubsystem.moveToSubmersibleIntakeCommand()); // Move arm to 'intake vertical' set position (outtakes if has sample)
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake ground"), Button.Y); // Move arm to 'intake ground' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.BACK); // Move arm to 'stow' set position
+
+        getGamepadTrigger(armGamepad, GamepadKeys.Trigger.RIGHT_TRIGGER)
+                .and(noDriverContextCommand).whenActive(driverContextCommand); // Lower intake in submersible or toggle height for specimen scoring
 
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("specimen high"), Button.DPAD_UP); // Move arm to 'specimen high' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("specimen low"), Button.DPAD_DOWN); // Move arm to 'specimen low' set position
@@ -294,6 +302,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
         combineButtons(armGamepad, Button.START).and(armGuide).whenActive(armSubsystem::zeroRaiseMotor); // Zero (reset) raise motor
 
         // Manual Arm Controls
+        // getTriggerFromBiAnalog() is used to add a deadzone to the analog sticks.
         getTriggerFromBiAnalog(armGamepad::getLeftY).and(notArmGuide) // Manually rotate arm up/down
                 .whileActiveOnce(armSubsystem.getRunRotationPowerCommand(armGamepad::getLeftY));
 
@@ -304,7 +313,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
                 .whileActiveOnce(armSubsystem.getRunRaisePowerCommand(armGamepad::getRightY));
 
         getTriggerFromBiAnalog(armGamepad::getRightY).and(armGuide) // Manually turn wrist up/down (puts the wrist at an offset that persists through set positions)
-                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(armGamepad.getRightY() * 0.03));
+                .whileActiveContinuous(() -> armSubsystem.changeWristOffset(armGamepad.getRightY() * Constants.ARM_WRIST_RATE_MANUAL));
 
 
         // Default/Automatic Commands
@@ -317,7 +326,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
 
         // When the intake has a sample, cycle intake intelligently
         new Trigger(armSubsystem::shouldStopIntakeForSample)
-                .and(armSubsystem.notSmartIntakeScheduledT()).whenActive(() -> armSubsystem.runSmartIntakeCommand(determineIntakeStow()));
+                .and(armSubsystem.notSmartIntakeScheduled()).whenActive(andThenRumble(new InstantCommand(() -> armSubsystem.runSmartIntakeCommand(determineIntakeStow())), baseGamepad));
 
         // At all times, check whether to rumble or stop rumbling the base driver's controller
         // The rumble command is set up like this because rumble methods sometimes need to run multiple times to take effect.
@@ -338,7 +347,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
 
         // Choose right trigger function
         setSpecimenMode(DriverPrompter.queryBoolean(this, false,
-                "Start in specimen mode?", "Specimen mode"));
+                "Start in specimen mode?", "Starting specimen mode"));
 
         telemetry.addLine("Mecauto Teleop Ready!");
         telemetry.update();
@@ -351,15 +360,8 @@ public class MecautoTeleOpMode extends CommandOpMode {
         private final GamepadEx gamepadEx;
         private final Gamepad gamepad;
 
-        private Float touchLastLY = null;
-        private float touchThisLY = 0.0f;
-        private float touchDeltaLY = 0.0f;
-        private Float touchLastLX = null;
-        private float touchThisLX = 0.0f;
-        private float touchDeltaLX = 0.0f;
-        private Float touchLastRX = null;
-        private float touchThisRX = 0.0f;
-        private float touchDeltaRX = 0.0f;
+        private Float touchLastLY, touchLastLX, touchLastRX;
+        private float touchThisLY, touchDeltaLY, touchThisLX, touchDeltaLX, touchThisRX, touchDeltaRX;
 
         public DriveWithTouchCommand(GamepadEx gamepadEx) {
             this.gamepadEx = gamepadEx;
@@ -378,6 +380,18 @@ public class MecautoTeleOpMode extends CommandOpMode {
             driveSubsystem.drive(gamepadEx.getLeftY() - (touchDeltaLY * Constants.DRIVE_TOUCHPAD_STRAFE_SENSITIVITY) / driveSubsystem.setPowerMultiplier,
                     gamepadEx.getLeftX() + (touchDeltaLX * Constants.DRIVE_TOUCHPAD_STRAFE_SENSITIVITY) / driveSubsystem.setPowerMultiplier,
                     gamepadEx.getRightX() - (touchDeltaRX * Constants.DRIVE_TOUCHPAD_TURN_SENSITIVITY) / driveSubsystem.setPowerMultiplier);
+        }
+
+        private void resetTouchDelta() {
+            touchLastLY = null;
+            touchThisLY = 0.0f;
+            touchDeltaLY = 0.0f;
+            touchLastLX = null;
+            touchThisLX = 0.0f;
+            touchDeltaLX = 0.0f;
+            touchLastRX = null;
+            touchThisRX = 0.0f;
+            touchDeltaRX = 0.0f;
         }
 
         private void updateTouchDelta() {
@@ -408,18 +422,6 @@ public class MecautoTeleOpMode extends CommandOpMode {
                 touchThisRX = 0.0f;
                 touchDeltaRX = 0.0f;
             }
-        }
-
-        private void resetTouchDelta() {
-            touchLastLY = null;
-            touchThisLY = 0.0f;
-            touchDeltaLY = 0.0f;
-            touchLastLX = null;
-            touchThisLX = 0.0f;
-            touchDeltaLX = 0.0f;
-            touchLastRX = null;
-            touchThisRX = 0.0f;
-            touchDeltaRX = 0.0f;
         }
     }
 

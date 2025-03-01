@@ -16,6 +16,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Calculations;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.QuadMotorValues;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
@@ -90,12 +91,14 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
     public final Localizer localizer;
     public final VisionPortalSubsystem vps;
     public Pose2d pose;
+    public Boolean flashVision = null; // true to signal it to use the next vision scan; null for continuous vision
 
     private final KalmanFilter positionFilterX = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
     private final KalmanFilter positionFilterY = new KalmanFilter(Constants.ABS_LOCALIZER_DENOISE_Q, Constants.ABS_LOCALIZER_DENOISE_R, Constants.ABS_LOCALIZER_DENOISE_N);
 
     private boolean isBlueAlliance = false;
     private boolean isAllianceTrusted = false;
+    private boolean wasAllianceChanged = false;
 
     private final LinkedList<Pose2d> poseHistory = new LinkedList<>();
 
@@ -202,6 +205,7 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
      * <p>If {@code trusted} is false, then the alliance may be automatically reobtained later.</p>
      */
     public void setIsBlueAlliance(boolean isBlueAlliance, boolean trusted) {
+        DriverPrompter.setOnBlueAlliance(isBlueAlliance);
         this.isBlueAlliance = isBlueAlliance;
         isAllianceTrusted = trusted;
         localizer.setAlliance(isBlueAlliance);
@@ -315,7 +319,19 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
                 t = Actions.now() - beginTs;
             }
 
-            if (t >= timeTrajectory.duration) {
+            Pose2dDual<Time> txWorldTarget = timeTrajectory.get(t);
+            targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
+
+            PoseVelocity2d robotVelRobot = updatePoseEstimate();
+
+            Pose2d error = txWorldTarget.value().minusExp(pose);
+
+            if ((t >= timeTrajectory.duration
+                    && error.position.norm() < Constants.AUTO_DRIVE_POS_TOLERANCE
+                    && robotVelRobot.linearVel.norm() < Constants.AUTO_DRIVE_VEL_TOLERANCE
+                    && error.heading.toDouble() < Constants.AUTO_DRIVE_ANG_TOLERANCE
+                    && robotVelRobot.angVel < Constants.AUTO_DRIVE_ANGVEL_TOLERANCE)
+                    || t >= timeTrajectory.duration + Constants.AUTO_DRIVE_TOLERANCE_TIMEOUT) {
                 leftFront.setPower(0);
                 leftBack.setPower(0);
                 rightBack.setPower(0);
@@ -324,10 +340,10 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
                 return false;
             }
 
-            Pose2dDual<Time> txWorldTarget = timeTrajectory.get(t);
-            targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
+            //Pose2dDual<Time> txWorldTarget = timeTrajectory.get(t);
+            //targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
 
-            PoseVelocity2d robotVelRobot = updatePoseEstimate();
+            //PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
             PoseVelocity2dDual<Time> command = new HolonomicController(
                     PARAMS.axialGain, PARAMS.lateralGain, PARAMS.headingGain,
@@ -358,7 +374,7 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
             p.put("y", pose.position.y);
             p.put("heading (deg)", Math.toDegrees(pose.heading.toDouble()));
 
-            Pose2d error = txWorldTarget.value().minusExp(pose);
+            //Pose2d error = txWorldTarget.value().minusExp(pose);
             p.put("xError", error.position.x);
             p.put("yError", error.position.y);
             p.put("headingError (deg)", Math.toDegrees(error.heading.toDouble()));
@@ -407,7 +423,17 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
                 t = Actions.now() - beginTs;
             }
 
-            if (t >= turn.duration) {
+            Pose2dDual<Time> txWorldTarget = turn.get(t);
+            targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
+
+            PoseVelocity2d robotVelRobot = updatePoseEstimate();
+
+            Pose2d error = txWorldTarget.value().minusExp(pose);
+
+            if ((t >= turn.duration
+                    && error.heading.toDouble() < Constants.AUTO_DRIVE_ANG_TOLERANCE
+                    && robotVelRobot.angVel < Constants.AUTO_DRIVE_ANGVEL_TOLERANCE)
+                    || t >= turn.duration + Constants.AUTO_DRIVE_TOLERANCE_TIMEOUT) {
                 leftFront.setPower(0);
                 leftBack.setPower(0);
                 rightBack.setPower(0);
@@ -416,10 +442,10 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
                 return false;
             }
 
-            Pose2dDual<Time> txWorldTarget = turn.get(t);
-            targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
+            //Pose2dDual<Time> txWorldTarget = turn.get(t);
+            //targetPoseWriter.write(new PoseMessage(txWorldTarget.value()));
 
-            PoseVelocity2d robotVelRobot = updatePoseEstimate();
+            //PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
             PoseVelocity2dDual<Time> command = new HolonomicController(
                     PARAMS.axialGain, PARAMS.lateralGain, PARAMS.headingGain,
@@ -468,26 +494,32 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
     }
 
     public boolean didLastPoseEstUseVision() {
-        return localizer.getLastUpdateMethod() == Localizers.Methods.VISION;
+        return usedVision;
     }
+    private boolean usedVision = false;
 
     /*private boolean isTwistUnderLimit(Twist2dDual<Time> twist) {
-        double velX = twist.velocity().linearVel.x.value();
-        double velY = twist.velocity().linearVel.y.value();
-        double velAng = twist.velocity().angVel.value();
-        return (velX * velX + velY * velY < Constants.LOCALIZATION_LINEAR_THRESHOLD_SQR) && (Math.abs(velAng) < Constants.LOCALIZATION_ANGULAR_THRESHOLD);
+        return (twist.velocity().value().linearVel.sqrNorm() < Constants.LOCALIZATION_LINEAR_THRESHOLD*Constants.LOCALIZATION_LINEAR_THRESHOLD)
+                && (Math.abs(twist.velocity().value().angVel) < Constants.LOCALIZATION_ANGULAR_THRESHOLD);
     }*/
 
     public PoseVelocity2d updatePoseEstimate() {
         Twist2dDual<Time> twist = localizer.update();
-        Pose2d absPose = localizer.getAbsolutePosition();
 
-        if (!isAllianceTrusted) {
-            if (localizer.getLastUpdateStatus() == Localizers.Status.DUBIOUS_ALLIANCE) {
-                setIsBlueAlliance(!isBlueAlliance, false);
-                absPose = localizer.calculateAbsolutePosition();
+        Pose2d absPose = null;
+        if (/*isTwistUnderLimit(twist) && */(flashVision == null || flashVision)) {
+            absPose = localizer.getAbsolutePosition();
+
+            if (!isAllianceTrusted) {
+                if (localizer.getLastUpdateStatus() == Localizers.Status.DUBIOUS_ALLIANCE) {
+                    setIsBlueAlliance(!isBlueAlliance, false);
+                    absPose = localizer.calculateAbsolutePosition();
+                }
             }
         }
+
+        usedVision = absPose != null;
+        if (usedVision && flashVision != null) flashVision = false;
 
         if (absPose == null) {
             // No absolute pose available (i.e. no vision)

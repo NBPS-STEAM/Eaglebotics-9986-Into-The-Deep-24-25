@@ -44,10 +44,10 @@ public class VisionLocalizationTuning extends LinearOpMode {
                     vps.setExposureMode(vps.getExposureMode() == ExposureControl.Mode.Manual ? ExposureControl.Mode.Auto : ExposureControl.Mode.Manual);
                 }
                 if (gamepad1.left_bumper) {
-                    changeExposure(1);
+                    changeExposure(10);
                 }
                 if (gamepad1.left_trigger > 0.8) {
-                    changeExposure(-1);
+                    changeExposure(-10);
                 }
                 if (gamepad1.right_bumper) {
                     changeGain(1);
@@ -63,7 +63,7 @@ public class VisionLocalizationTuning extends LinearOpMode {
                 telemetry.addLine();
                 telemetry.addData("TAGS DETECTED", vps.getDetections().size());
                 telemetry.addData("Exposure Mode", vps.getExposureMode());
-                telemetry.addData("Exposure", "%d  (%d - %d)", vps.getExposure(), vps.getMinExposure(), vps.getMaxExposure());
+                telemetry.addData("Exposure (microseconds)", "%d  (%d - %d)", vps.getExposure(), vps.getMinExposure(), vps.getMaxExposure());
                 telemetry.addData("Gain", "%d  (%d - %d)", vps.getGain(), vps.getMinGain(), vps.getMaxGain());
             } else {
                 telemetry.addLine("Waiting on camera...");

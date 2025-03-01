@@ -1,9 +1,7 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
-import com.arcrobotics.ftclib.command.Command;
-import com.arcrobotics.ftclib.command.CommandBase;
-import com.arcrobotics.ftclib.command.InstantCommand;
-import com.arcrobotics.ftclib.command.SequentialCommandGroup;
+import com.acmerobotics.roadrunner.Pose2d;
+import com.arcrobotics.ftclib.command.*;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
@@ -22,18 +20,33 @@ public final class AutoCommands {
         this.armSubsystem = armSubsystem;
     }
 
+
     public Command getIntakeSpecimenCommand() {
         CommandBase command = new SequentialCommandGroup(
-                getDriveToBasketPath1(),
-                getDriveToBasketPath2()
+                new RoadRunnerCommand(drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(Constants.POS_SPECIMEN_APPROACH.position, Constants.POS_SPECIMEN_APPROACH.heading)
+                        .build()),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground")),
+                new ParallelRaceGroup(
+                        new WaitUntilCommand(armSubsystem::hasSampleInIntake),
+                        new RoadRunnerCommand(drive.actionBuilder(drive.pose)
+                                .strafeToLinearHeading(Constants.POS_SPECIMEN_INTAKE.position, Constants.POS_SPECIMEN_INTAKE.heading)
+                                .build())
+                )
         );
         command.addRequirements(drive);
         return command;
     }
 
+
     public Command getScoreSpecimenCommand() {
-        return new InstantCommand(); //TODO
+        CommandBase command = new SequentialCommandGroup(
+                //TODO
+        );
+        command.addRequirements(drive);
+        return command;
     }
+
 
     /**
      * This command executes an on-the-fly path to autonomously drive and score in the high basket before
@@ -43,29 +56,26 @@ public final class AutoCommands {
      */
     public Command getScoreSampleCommand() {
         CommandBase command = new SequentialCommandGroup(
-                getDriveToBasketPath1(),
-                getDriveToBasketPath2()
+                new InstantCommand(() -> armSubsystem.lockSetPosition(false)),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("basket high", true, true)),
+                getDriveToBasketPath(),
+                new InstantCommand(armSubsystem::startOuttake),
+                new WaitCommand(400),
+                new InstantCommand(() -> armSubsystem.lockSetPosition(false)),
+                getDriveFromBasketPath()
         );
         command.addRequirements(drive);
         return command;
     }
 
-    private Command getDriveToBasketPath1() {
-        // Second path (drive to basket)
+    private Command getDriveToBasketPath() {
         return new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
-                .stopAndAdd(() -> armSubsystem.lockSetPosition(false))
-                .stopAndAdd(() -> armSubsystem.applyNamedPosition("basket high", true, true))
                 .strafeToLinearHeading(Constants.POS_BASKETS_SCORE.position, Constants.POS_BASKETS_SCORE.heading)
-                .build()).withVisionCheck(drive, Constants.POS_BASKETS_SCORE);
+                .build());//.withVisionCheck(drive, Constants.POS_BASKETS_SCORE);
     }
 
-    private Command getDriveToBasketPath2() {
-        // Third path (score and return)
+    private Command getDriveFromBasketPath() {
         return new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
-                .stopAndAdd(armSubsystem::startOuttake)
-                .waitSeconds(0.4)
-                .afterTime(0.0, () -> armSubsystem.lockSetPosition(false))
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("compact"))
                 .strafeTo(Constants.POS_INTAKE_APPROACH.position)
                 .build());
     }

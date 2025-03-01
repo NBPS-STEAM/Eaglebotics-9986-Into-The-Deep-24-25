@@ -68,20 +68,21 @@ public class ArmSubsystem extends SubsystemBase {
         addNamedPosition("stow", new ArmPosition(0.37, 2, 0, 1.4, IntakeState.STOPPED));
         addNamedPosition("intake", new ArmPosition(0.37, 67, 0, 1.39, IntakeState.INTAKE));
         addNamedPosition("intake-down", new ArmPosition(0.3, 67, 0, 1.39, IntakeState.INTAKE));
-        addNamedPosition("intake vertical", new ArmPosition(0.425, 67, 0, 1.766, IntakeState.INTAKE));
-        addNamedPosition("intake vertical-down", new ArmPosition(0.355, 67, 0, 1.766, IntakeState.INTAKE));
+        addNamedPosition("intake vertical", new ArmPosition(0.425, 65, 0, 1.766, IntakeState.INTAKE));
+        addNamedPosition("intake vertical-down", new ArmPosition(0.355, 65, 0, 1.766, IntakeState.INTAKE));
         addNamedPosition("intake ground", new ArmPosition(0.17, 18, 0, 1.317, IntakeState.INTAKE));
-        addNamedPosition("basket high", new ArmPosition(0.9, 67, 160, 1.766));
+        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.7));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.766));
-        addNamedPosition("specimen high", new ArmPosition(0.67, 67, 0, 1.5));
+        addNamedPosition("specimen high", new ArmPosition(0.67, 67, 0, 1.6));
         addNamedPosition("specimen low", new ArmPosition(0.56, 67, 0, 1.5));
 
-        addNamedPosition("hang stage 1", new ArmPosition(1.4, 2, 160, 1.5, IntakeState.STOPPED));
-        addNamedPosition("hang stage 2", new ArmPosition(1.7, 2, 0, 1.5, IntakeState.STOPPED));
+        addNamedPosition("hang stage 1", new ArmPosition(1.4, 0, 160, 0.95, IntakeState.STOPPED));
+        addNamedPosition("hang stage 2", new ArmPosition(1.7, 0, 0, 0.95, IntakeState.STOPPED));
 
         // These positions are only used in autonomous routines
-        addNamedPosition("ascent level 1", new ArmPosition(0.6, 67, 160, 1.5, IntakeState.STOPPED));
-        addNamedPosition("intake ground-high", new ArmPosition(0.17, 67, 95, 1.294, IntakeState.INTAKE)
+        addNamedPosition("ascent level 1", new ArmPosition(0.6, 0, 160, 0.95, IntakeState.STOPPED));
+        addNamedPosition("intake ground-high up", new ArmPosition(0.5, 67, 95, 1.294, IntakeState.STOPPED));
+        addNamedPosition("intake ground-high down", new ArmPosition(0.17, 67, 95, 1.294, IntakeState.INTAKE)
                 .after(() -> applyRotationPositionUnscaled(-50)));
 
         // ???
@@ -323,14 +324,18 @@ public class ArmSubsystem extends SubsystemBase {
 
     // Arm Commands
 
+    /**
+     * Automatically recalibrate the arm rotation's zero position using the physical stop.
+     * <p>Takes 0.5 seconds to execute.</p>
+     * <p>ONLY run when arm is at the PHYSICAL BOTTOM position (which should also be the zero position)!</p>
+     */
     public Command automaticZeroRotationCommand() {
         return new SequentialCommandGroup(
                 new InstantCommand(() -> setRotationPower(-0.3)),
                 new WaitCommand(250),
                 new InstantCommand(() -> setRotationPower(0)),
                 new WaitCommand(250),
-                new InstantCommand(this::zeroRotationMotor),
-                new InstantCommand(() -> applyNamedPosition("compact", false))
+                new InstantCommand(this::zeroRotationMotor)
         );
     }
 
@@ -358,11 +363,17 @@ public class ArmSubsystem extends SubsystemBase {
         return command;
     }
 
-    public Command compactOrZeroCommand() {
+    public Command compactStowOrZeroCommand() {
         CommandBase command = new ConditionalCommand(
-                automaticZeroRotationCommand(),
-                new InstantCommand(() -> applyNamedPosition("compact", false)),
-                () -> "compact".equals(getLastSetPosition()));
+                new InstantCommand(() -> applyNamedPosition("stow", false)),
+                new ConditionalCommand(
+                        automaticZeroRotationCommand().andThen(
+                                new InstantCommand(() -> applyNamedPosition("compact", false))),
+                        new InstantCommand(() -> applyNamedPosition("compact", false)),
+                        () -> wasLastSetPosition("compact")
+                ),
+                () -> wasLastSetPosition("intake vertical") || wasLastSetPosition("intake vertical-down")
+        );
         command.addRequirements(this);
         return command;
     }
@@ -371,16 +382,45 @@ public class ArmSubsystem extends SubsystemBase {
         return new ConditionalCommand(
                 new InstantCommand(() -> applyNamedPosition("hang stage 2")),
                 new InstantCommand(() -> applyNamedPosition("hang stage 1")),
-                () -> "hang stage 1".equals(getLastSetPosition()));
+                () -> wasLastSetPosition("hang stage 1"));
     }
 
     /** Context-sensitive action for the base driver. */
     public Command driverContextCommand() {
         CommandBase command = new SelectCommand(new HashMap<Object, Command>() {{
                     put("intake vertical", submersibleIntakeDownCommand());
-                    put("specimen low", new InstantCommand(() -> applyNamedPosition("specimen high")));
-                    put("specimen high", new InstantCommand(() -> applyNamedPosition("specimen low")));
+                    put("specimen low", postDelay(() -> applyNamedPosition("specimen high")));
+                    put("specimen high", postDelay(() -> applyNamedPosition("specimen low")));
                 }}, this::getLastSetPosition
+        );
+        command.addRequirements(this);
+        return command;
+    }
+
+    private Command postDelay(Runnable action) {
+        return new InstantCommand(action).andThen(new WaitCommand(500));
+    }
+
+    private Command composeSmartIntakeCommand() {
+        // wowza
+        final ArmSubsystem subsystem = this;
+        CommandBase command = new SelectCommand(
+                new HashMap<Object, Command>() {{
+                    put(IntakeState.STOPPED, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::startIntake)
+                    ));
+                    put(IntakeState.INTAKE, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::stopIntake),
+                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
+                            new WaitCommand(500)
+                    ));
+                    put(IntakeState.OUTTAKE, new SequentialCommandGroup(
+                            new InstantCommand(subsystem::stopIntake),
+                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
+                            new WaitCommand(500)
+                    ));
+                }},
+                this::getIntakeState
         );
         command.addRequirements(this);
         return command;
@@ -447,43 +487,12 @@ public class ArmSubsystem extends SubsystemBase {
         smartIntakeCommand.schedule();
     }
 
-    public Trigger notSmartIntakeScheduledT() {
-        return new Trigger(this::notSmartIntakeScheduled);
-        // This calls a method instead of the command directly so that the other method will read the smartIntakeCommand
-        // variable each time for the latest value instead of taking the value at the time the Trigger is created.
-    }
-
-    public boolean notSmartIntakeScheduled() {
-        return !smartIntakeCommand.isScheduled();
+    public Trigger notSmartIntakeScheduled() {
+        return new Trigger(() -> !smartIntakeCommand.isScheduled());
     }
 
     private String getSmartIntakeStowPosition() {
         return smartIntakeStow;
-    }
-
-    public Command composeSmartIntakeCommand() {
-        // wowza
-        final ArmSubsystem subsystem = this;
-        CommandBase finalCommand = new SelectCommand(
-                new HashMap<Object, Command>() {{
-                    put(IntakeState.STOPPED, new SequentialCommandGroup(
-                            new InstantCommand(subsystem::startIntake)
-                    ));
-                    put(IntakeState.INTAKE, new SequentialCommandGroup(
-                            new InstantCommand(subsystem::stopIntake),
-                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
-                            new WaitCommand(500)
-                    ));
-                    put(IntakeState.OUTTAKE, new SequentialCommandGroup(
-                            new InstantCommand(subsystem::stopIntake),
-                            new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
-                            new WaitCommand(500)
-                    ));
-                }},
-                this::getIntakeState
-        );
-        finalCommand.addRequirements(this);
-        return finalCommand;
     }
 
     // Zeroing Motors
@@ -713,6 +722,14 @@ public class ArmSubsystem extends SubsystemBase {
      */
     public String getLastSetPosition() {
         return lastSetPosition;
+    }
+
+    /**
+     * Whether the name of the last set position applied by name matches the given name.
+     * @see #getLastSetPosition()
+     */
+    public boolean wasLastSetPosition(String name) {
+        return name.equals(getLastSetPosition());
     }
 
     // Motor/Servo Positions

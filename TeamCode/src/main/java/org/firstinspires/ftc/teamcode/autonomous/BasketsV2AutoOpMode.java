@@ -29,10 +29,10 @@
 
 package org.firstinspires.ftc.teamcode.autonomous;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.*;
 import com.arcrobotics.ftclib.command.*;
-import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
@@ -80,11 +80,19 @@ import java.lang.Math;
  */
 
 @Autonomous(name="Baskets V2 Auto-OpMode (3 or 4 samples)", group="Autonomous OpMode")
+@Config
 public class BasketsV2AutoOpMode extends CommandOpMode {
 
     // Variables
     private static final Pose2d INITIAL_POSE = new Pose2d(-35, -60, Math.PI / 2);
+    private static final long BASKET_DELAY_MS = 800;
     private static final long OUTTAKE_DELAY_MS = 400;
+
+    public static double debugMaxAngVel = Math.PI * 0.8;
+    public static double debugMaxAngAccel = Math.PI * 0.8;
+    public static double debugMaxWheelVel = 30;
+    public static double debugMaxProfileAccel = 20;
+    public static double debugMinProfileAccel = -20;
 
     // Hardware Variables
     private DriveSubsystemRRVision drive;
@@ -98,12 +106,19 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
         // Reset zero state; autonomous opmodes should always zero the robot
         ResetZeroState.resetZeroState();
         // Initialize hardware
-        armSubsystem = new ArmSubsystem(hardwareMap, 0.5, 0.5, 1.0);
+        armSubsystem = new ArmSubsystem(hardwareMap, 0.5, 0.6, 1.0);
         visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, Constants.CAM_DO_STREAM);
 
         // Initialize MecanumDrive at a particular pose
+        DriveSubsystemRRVision.Params params = new DriveSubsystemRRVision.Params();
+        params.maxAngVel = debugMaxAngVel;
+        params.maxAngAccel = debugMaxAngAccel;
+        params.maxWheelVel = debugMaxWheelVel;
+        params.maxProfileAccel = debugMaxProfileAccel;
+        params.minProfileAccel = debugMinProfileAccel;
         drive = new DriveSubsystemRRVision(hardwareMap, visionPortalSubsystem,
-                Localizers.ENCODERS_WITH_VISION, INITIAL_POSE);
+                Localizers.ENCODERS_WITH_VISION, INITIAL_POSE, params);
+        visionPortalSubsystem.maxRange = 40;
 
         // Autonomous path is generated and scheduled at the bottom of this method.
 
@@ -111,10 +126,12 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
         // Schedule commands
 
         // When the intake intakes a sample, stop the intake
-        new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::stopIntake);
+        //new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::stopIntake);
 
         // At all times, update the telemetry log
         drive.new TelemetryLoggerCommand(telemetry).schedule(false);
+        telemetry.addData("Runtime", this::getRuntime);
+        telemetry.addData("Sample in Intake?", armSubsystem::hasSampleInIntake);
 
 
         // Get driver configuration
@@ -128,8 +145,7 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
 
         // Do left sample?
         // Path is generated and scheduled here.
-        Command pathCommand = getBasketsV2(drive, armSubsystem,
-                DriverPrompter.queryBoolean(this, true, "Go for the leftmost sample?", "Do left sample"));
+        Command pathCommand = getBasketsV2(DriverPrompter.queryBoolean(this, true, "Go for the leftmost sample?", "Do left sample"));
         pathCommand.andThen(new InstantCommand(this::reportFinished)).schedule(false);
 
         telemetry.addLine("Baskets V2 Auto Ready!");
@@ -151,56 +167,88 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
         telemetry.update();
     }
 
-    private Command getBasketsV2(DriveSubsystemRRVision drive, ArmSubsystem armSubsystem, boolean doLeftSample) {
+    private Command getBasketsV2(boolean doLeftSample) {
         // Define keypoint positions
         final Pose2d BASKET_POSE = Constants.POS_BASKETS_SCORE;
-        final Pose2d SAMPLE_1_APP = new Pose2d(-49, -43, Math.toRadians(92.35));
-        final Pose2d SAMPLE_1_INT = new Pose2d(-49, -37, Math.toRadians(92.35));
-        final Pose2d SAMPLE_2_APP = new Pose2d(-59, -43, Math.toRadians(92.35));
+        final Pose2d BASKET_POSE_FIRST = new Pose2d(new Vector2d(BASKET_POSE.position.x - 0.25, BASKET_POSE.position.y - 0.25), BASKET_POSE.heading);
+        final Pose2d SAMPLE_1_APP = new Pose2d(-47, -49, Math.toRadians(92.35));
+        final Pose2d SAMPLE_1_INT = new Pose2d(-47, -37, Math.toRadians(92.35));
+        final Pose2d SAMPLE_2_APP = new Pose2d(-59, -49, Math.toRadians(92.35));
         final Pose2d SAMPLE_2_INT = new Pose2d(-59, -37, Math.toRadians(92.35));
+        //final Pose2d SAMPLE_2_SCAN = new Pose2d(new Vector2d(BASKET_POSE.position.x + 20, BASKET_POSE.position.y), -Math.PI / 2);
         final Pose2d SAMPLE_3_APP1 = new Pose2d(-57, -45.5, Math.toRadians(100));
-        final Pose2d SAMPLE_3_APP2 = new Pose2d(-59, -45, Math.toRadians(117.4));
-        final Pose2d SAMPLE_3_INT = new Pose2d(-59, -42.5, Math.toRadians(117.4));
-        final Pose2d PARK_1 = new Pose2d(-51, -12, 0);
-        final Pose2d PARK_2 = new Pose2d(-30, -12, 0);
+        final Pose2d SAMPLE_3_APP2 = new Pose2d(-60, -45, Math.toRadians(117.4));
+        final Pose2d SAMPLE_3_INT = new Pose2d(-60, -37, Math.toRadians(117.4));
+        final Pose2d PARK_1 = new Pose2d(-51, -8, 0);
+        final Pose2d PARK_2 = new Pose2d(-28, -12, 0);
+
+        // DEBUG
+        /*return new SequentialCommandGroup(
+                composeScoreCommandArmless(BASKET_POSE),
+                new WaitCommand(1000),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(SAMPLE_1_APP.position, SAMPLE_1_APP.heading)
+                        .strafeToLinearHeading(SAMPLE_1_INT.position, SAMPLE_1_INT.heading)
+                        .build()),
+                composeScoreCommandArmless(BASKET_POSE),
+                new WaitCommand(1000),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(SAMPLE_2_APP.position, SAMPLE_2_APP.heading)
+                        .strafeToLinearHeading(SAMPLE_2_INT.position, SAMPLE_2_INT.heading)
+                        .build()),
+                composeScoreCommandArmless(BASKET_POSE),
+                new WaitCommand(1000),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(SAMPLE_3_APP1.position, SAMPLE_3_APP1.heading)
+                        .strafeToLinearHeading(SAMPLE_3_APP2.position, SAMPLE_3_APP2.heading)
+                        .strafeToLinearHeading(SAMPLE_3_INT.position, SAMPLE_3_INT.heading)
+                        .build()),
+                composeScoreCommandArmless(BASKET_POSE),
+                new WaitCommand(1000),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, PARK_1, 10),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, PARK_2, 2)
+        );*/
+        // END DEBUG
+        /*return new SequentialCommandGroup(
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.INTAKE)),
+                new RepeatCommand(
+                        new SequentialCommandGroup(
+                                new InstantCommand(() -> telemetry.addData("sample in intake", armSubsystem.hasSampleInIntake())),
+                                new InstantCommand(telemetry::update)
+                        )
+                )
+        );*/
 
         // Compose some commands
-        Command preloadScore = composeScoreCommand(BASKET_POSE);
+        Command preloadScore = composeScoreCommand(BASKET_POSE_FIRST);
 
-        Command park = new RoadRunnerCommand(drive.actionBuilder(BASKET_POSE)
-                // Park in ascent zone and achieve Level 1 Ascent
-                .afterTime(0.0, () -> armSubsystem.applyIntakeState(IntakeState.STOPPED))
-                .stopAndAdd(blockIfTimeout(2.0))
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("ascent level 1"))
-                .strafeToLinearHeading(PARK_1.position, PARK_1.heading)
-                .strafeToLinearHeading(PARK_2.position, PARK_2.heading)
-                .afterTime(0.0, () -> armSubsystem.setRotationPower(0.0))
-                .build());
+        Command park = composeParkCommand(PARK_1, PARK_2);
 
 
         // Compose final command
         if (doLeftSample) {
             return new SequentialCommandGroup(
+                    new WaitCommand(100),
                     preloadScore,
-                    composeSampleCommand(BASKET_POSE, SAMPLE_1_APP, SAMPLE_1_INT),
-                    composeSampleCommand(BASKET_POSE, SAMPLE_2_APP, SAMPLE_2_INT),
-                    composeSampleSafeCommand(BASKET_POSE, SAMPLE_3_APP1, SAMPLE_3_APP2, SAMPLE_3_INT),
+                    composeSampleCommand(BASKET_POSE, SAMPLE_1_APP, SAMPLE_1_INT, false),
+                    composeSampleCommand(BASKET_POSE, SAMPLE_2_APP, SAMPLE_2_INT, true),
+                    composeThirdSampleCommand(BASKET_POSE, SAMPLE_3_APP1, SAMPLE_3_APP2, SAMPLE_3_INT),
                     park
             );
         } else {
             return new SequentialCommandGroup(
+                    new WaitCommand(100),
                     preloadScore,
-                    composeSampleCommand(BASKET_POSE, SAMPLE_1_APP, SAMPLE_1_INT),
-                    composeSampleCommand(BASKET_POSE, SAMPLE_2_APP, SAMPLE_2_INT),
+                    composeSampleCommand(BASKET_POSE, SAMPLE_1_APP, SAMPLE_1_INT, false),
+                    composeSampleCommand(BASKET_POSE, SAMPLE_2_APP, SAMPLE_2_INT, true),
                     park
             );
         }
     }
 
-    private Command composeSampleCommand(Pose2d BASKET_POSE, Pose2d APPROACH_POSE, Pose2d INTAKE_POSE) {
+    private Command composeSampleCommand(Pose2d BASKET_POSE, Pose2d APPROACH_POSE, Pose2d INTAKE_POSE, boolean BASKET_SCAN) {
         Command approach = new RoadRunnerCommand(drive.actionBuilder(BASKET_POSE)
                 // Approach spike mark sample
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("intake ground-high"))
                 .strafeToLinearHeading(APPROACH_POSE.position, APPROACH_POSE.heading)
                 .build());
 
@@ -209,30 +257,27 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
                 .strafeToLinearHeading(INTAKE_POSE.position, INTAKE_POSE.heading)
                 .build());
 
-        Command score = composeScoreCommand(BASKET_POSE);
-
-        Command invalidateTargets = new InstantCommand(armSubsystem::invalidateTargets);
-        Command yieldArmTarget = new WaitUntilCommand(() -> armSubsystem.isRotationAtTargetPosition(55));
-        Command yieldIntakeSensor = new WaitUntilCommand(armSubsystem::hasSampleInIntake);
+        Command score = BASKET_SCAN ? composeScoreScanCommand(BASKET_POSE) : composeScoreCommand(BASKET_POSE);
+        Command lowerArm = lowerArmSafely();
 
         return new SequentialCommandGroup(
-                invalidateTargets, // to prevent yieldArmTarget from ending before the arm position is set
-                new ParallelDeadlineGroup(
-                        yieldArmTarget,
-                        approach
-                ),
+                new InstantCommand(() -> lowerArm.schedule(false)),
                 new ParallelRaceGroup(
-                        yieldIntakeSensor,
-                        intake
+                        new WaitUntilCommand(armSubsystem::hasSampleInIntake),
+                        new SequentialCommandGroup(
+                                approach,
+                                intake
+                        )
                 ),
+                new InstantCommand(() -> cancelIfScheduled(lowerArm)),
+                armSubsystem.automaticZeroRotationCommand(),
                 score
         );
     }
 
-    private Command composeSampleSafeCommand(Pose2d BASKET_POSE, Pose2d APPROACH_POSE_1, Pose2d APPROACH_POSE_2, Pose2d INTAKE_POSE) {
+    private Command composeThirdSampleCommand(Pose2d BASKET_POSE, Pose2d APPROACH_POSE_1, Pose2d APPROACH_POSE_2, Pose2d INTAKE_POSE) {
         Command approach1 = new RoadRunnerCommand(drive.actionBuilder(BASKET_POSE)
                 // Approach spike mark sample (first part)
-                .afterTime(0.5, () -> armSubsystem.applyNamedPosition("intake ground-high"))
                 .strafeToLinearHeading(APPROACH_POSE_1.position, APPROACH_POSE_1.heading)
                 .build());
 
@@ -247,29 +292,39 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
                 .build());
 
         Command score = composeScoreCommand(BASKET_POSE);
-
-        Command invalidateTargets = new InstantCommand(armSubsystem::invalidateTargets);
         Command yieldArmSafe = new WaitUntilCommand(() -> armSubsystem.getRotationPosition() < 0.4);
-        Command yieldArmTarget = new WaitUntilCommand(() -> armSubsystem.isRotationAtTargetPosition(55));
         Command yieldIntakeSensor = new WaitUntilCommand(armSubsystem::hasSampleInIntake);
+        Command lowerArm = lowerArmSafely();
 
         return new SequentialCommandGroup(
-                invalidateTargets, // to prevent yieldArmTarget from ending before the arm position is set
-                new ParallelDeadlineGroup(
-                        yieldArmTarget,
+                new InstantCommand(() -> lowerArm.schedule(false)),
+                new ParallelRaceGroup(
+                        yieldIntakeSensor,
                         new SequentialCommandGroup(
                                 new ParallelDeadlineGroup(
                                         yieldArmSafe,
                                         approach1
                                 ),
-                                approach2
+                                approach2,
+                                intake
                         )
                 ),
-                new ParallelRaceGroup(
-                        yieldIntakeSensor,
-                        intake
-                ),
+                new InstantCommand(() -> cancelIfScheduled(lowerArm)),
+                armSubsystem.automaticZeroRotationCommand(),
+                //new InstantCommand(() -> armSubsystem.applyNamedPosition("compact")),
+                RoadRunnerCommand.lazyTurnTo(drive, Math.toRadians(85), Math.toRadians(10)),
                 score
+        );
+    }
+
+    private Command lowerArmSafely() {
+        return new SequentialCommandGroup(
+                new WaitUntilCommand(() -> drive.pose.heading.toDouble() > -Math.PI / 2), // This works because of angle wrapping
+                new WaitCommand(400),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground-high up")),
+                new WaitUntilCommand(() -> drive.pose.heading.toDouble() < Math.PI * 2 / 3),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground-high down"))
+                //new WaitUntilCommand(() -> armSubsystem.isRotationAtTargetPosition(500))
         );
     }
 
@@ -278,50 +333,80 @@ public class BasketsV2AutoOpMode extends CommandOpMode {
                 new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("basket high")),
                 new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
-                        .strafeTo(BASKET_POSE.position)
-                        .stopAndAdd(armSubsystem.yieldForArmTarget())
-                        .turnTo(BASKET_POSE.heading)
-                        .build()).withVisionCheck(drive, BASKET_POSE),
+                        .strafeTo(BASKET_POSE.position).build()),
+                new WaitUntilCommand(() -> armSubsystem.isArmAtTargetPosition(20, 30, 30)),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .turnTo(BASKET_POSE.heading).build()),
+                new WaitCommand(BASKET_DELAY_MS),
                 new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE)),
                 new WaitCommand(OUTTAKE_DELAY_MS)
         );
-        // This command starts with FTCLib Commands, then switches to Road Runner Actions for a bit, then goes back to FTCLib.
-        // A command that casually flips between two different command systems. That's fun.
     }
 
-    /**
-     * Constructs an Action that runs indefinitely if there isn't enough time remaining in the auto period.
-     * Optionally takes a Runnable to run if/when it starts blocking.
-     */
-    private Action blockIfTimeout(double minTime) {
-        return blockIfTimeout(minTime, null);
+    private Command composeScoreScanCommand(Pose2d BASKET_POSE) {
+        return new SequentialCommandGroup(
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("basket high")),
+                new ParallelRaceGroup(
+                        new WaitUntilCommand(drive::didLastPoseEstUseVision),
+                        new RoadRunnerCommand(drive.actionBuilder(drive.pose).turn(Math.PI * 1.5).build())
+                ),
+                //new WaitUntilCommand(() -> armSubsystem.isArmAtTargetPosition(20, 30, 30)),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(BASKET_POSE.position, BASKET_POSE.heading).build()),
+                new WaitCommand(BASKET_DELAY_MS),
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.OUTTAKE)),
+                new WaitCommand(OUTTAKE_DELAY_MS)
+        );
     }
 
-    /**
-     * @see #blockIfTimeout(double)
-     */
-    private Action blockIfTimeout(double minTime, Runnable whenBlock) {
-        return new BlockIfTimeout(minTime, whenBlock);
+    /*private Command composeScoreCommandArmless(Pose2d BASKET_POSE) {
+        Vector2d BASKET_FIRST = new Vector2d(BASKET_POSE.position.x+12, BASKET_POSE.position.y);
+        return new SequentialCommandGroup(
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .strafeTo(BASKET_POSE.position)
+                        .build()),
+                new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose)
+                        .turnTo(BASKET_POSE.heading).build()),
+                new WaitCommand(BASKET_DELAY_MS),
+                new WaitCommand(OUTTAKE_DELAY_MS)
+        );
+    }*/
+
+    private Command composeParkCommand(Pose2d PARK_1, Pose2d PARK_2) {
+        return new SequentialCommandGroup(
+                // Park in ascent zone and achieve Level 1 Ascent
+                new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
+                blockIfTimeout(2), // stop if not enough time left
+                new ParallelCommandGroup(
+                        new SequentialCommandGroup(
+                                new WaitUntilCommand(() -> drive.pose.heading.toDouble() > -Math.PI / 2), // This works because of angle wrapping
+                                new InstantCommand(() -> armSubsystem.applyNamedPosition("ascent level 1"))
+                        ),
+                        new SequentialCommandGroup(
+                                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, PARK_1, 10),
+                                new ParallelCommandGroup(
+                                        RoadRunnerCommand.lazyStrafeToLinearHeading(drive, PARK_2, 2),
+                                        new SequentialCommandGroup(
+                                                waitForTimeRemaining(0.2),
+                                                new InstantCommand(() -> armSubsystem.setRotationPower(-0.05))
+                                        )
+                                )
+
+                        )
+                )
+        );
     }
 
-    class BlockIfTimeout implements Action {
-        private final double minTime;
-        private final Runnable whenBlock;
-        private boolean startedBlocking = false;
+    private void cancelIfScheduled(Command command) {
+        if (command.isScheduled()) command.cancel();
+    }
 
-        public BlockIfTimeout(double minTime, Runnable whenBlock) {
-            this.minTime = minTime;
-            this.whenBlock = whenBlock;
-        }
+    private Command waitForTimeRemaining(double time) {
+        return new WaitUntilCommand(() -> 30 - getRuntime() < time);
+    }
 
-        @Override
-        public boolean run(@NotNull TelemetryPacket telemetryPacket) {
-            boolean cond = 30 - getRuntime() < minTime;
-            if (cond && !startedBlocking && whenBlock != null) {
-                whenBlock.run();
-            }
-            startedBlocking = cond;
-            return cond; // If true, this action will run again
-        }
+    private Command blockIfTimeout(double requiredTime) {
+        return new WaitUntilCommand(() -> 30 - getRuntime() > requiredTime);
     }
 }

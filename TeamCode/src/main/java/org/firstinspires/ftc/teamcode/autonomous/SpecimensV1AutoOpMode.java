@@ -82,7 +82,7 @@ import java.util.function.Supplier;
  * You can also do that by holding ctrl while you click on the variable/method.
  */
 
-@Autonomous(name="Specimens V1 Auto-OpMode (2-5 specimens)", group="Autonomous OpMode")
+@Autonomous(name="Specimens V1 Auto-OpMode (2-4 specimens)", group="Autonomous OpMode")
 public class SpecimensV1AutoOpMode extends CommandOpMode {
 
     // Variables
@@ -108,22 +108,22 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
         // Do which routine?
         // Path is NOT generated here.
         // This is asked all the way up here because drive subsystem params depend on this.
-        boolean useV2 = DriverPrompter.queryBoolean(this, false, "Do the full 5-specimen routine?", "Do full routine");
+        boolean useV2 = DriverPrompter.queryBoolean(this, false, "Do the full 4-specimen routine?", "Do full routine");
         Supplier<Command> pathGenerator;
         DriveSubsystemRRVision.Params params = new DriveSubsystemRRVision.Params();
         if (useV2) {
             pathGenerator = this::getSpecimensV2;
-            params.maxWheelVel = Constants.AUTO_DRIVE_VEL_MAX;
-            params.minProfileAccel = -Constants.AUTO_DRIVE_ACCEL_MAX;
-            params.maxProfileAccel = Constants.AUTO_DRIVE_ACCEL_MAX;
-            params.maxAngVel = Constants.AUTO_DRIVE_ANG_VEL_MAX;
-            params.maxAngAccel = Constants.AUTO_DRIVE_ANG_ACCEL_MAX;
+            params.maxWheelVel = 50;
+            params.minProfileAccel = -20;
+            params.maxProfileAccel = 20.0;
+            params.maxAngVel = Math.PI * 1.5;
+            params.maxAngAccel = Math.PI * 1.5;
         } else {
             pathGenerator = this::getSpecimensV1;
         }
 
         // Initialize hardware
-        armSubsystem = new ArmSubsystem(hardwareMap, 0.4, 0.5, 1.0);
+        armSubsystem = new ArmSubsystem(hardwareMap, 0.5, 0.8, 1.0);
         visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, Constants.CAM_DO_STREAM);
 
         // Initialize MecanumDrive at a particular pose
@@ -144,6 +144,7 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
 
         // At all times, update the telemetry log
         drive.new TelemetryLoggerCommand(telemetry).schedule(false);
+        telemetry.addData("Runtime", this::getRuntime);
 
 
         // Get driver configuration
@@ -189,13 +190,13 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
                 composeRetrievalCommand(),
                 RoadRunnerCommand.lazyStrafeTo(drive, new Vector2d(-9, INTAKE_Y+4), 6),
                 composeIntakeCommand(),
-                composeScoreCommand(2),
+                composeScoreCommand(8),
                 composeIntakeCommand(),
-                composeScoreCommand(-4),
+                composeScoreCommand(8),
                 composeIntakeCommand(),
-                composeScoreCommand(-10),
+                composeScoreCommand(8),
                 composeIntakeCommand(),
-                composeScoreCommand(-16),
+                composeScoreCommand(8),
                 composeParkCommand()
         );
     }
@@ -241,17 +242,17 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
         final double retYFar = -16;
         final double retYNear = -60;
         final double retX1 = 38;
-        final double retX2 = 42;
-        final double retX3 = 53;
+        final double retX2 = 47;
+        final double retX3 = 56;
         //final double retX4 = 58;
 
         final VelConstraint fastVel =
                 new MinVelConstraint(Arrays.asList(
-                        drive.kinematics.new WheelVelConstraint(80),
-                        new AngularVelConstraint(Math.PI * 2)
+                        drive.kinematics.new WheelVelConstraint(100),
+                        new AngularVelConstraint(Math.PI)
                 ));
         final AccelConstraint fastAccel =
-                new ProfileAccelConstraint(-40, 40);
+                new ProfileAccelConstraint(-30, 30);
 
         // Compose sample retrieval command
         return new SequentialCommandGroup(
@@ -264,11 +265,11 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
                 RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar+20), 20, fastVel, fastAccel),
 
                 RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar), 5, fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYNear), 20, fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar+20), 20, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYNear), 20, fastVel, fastAccel)
+                //RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar+20), 20, fastVel, fastAccel),
 
-                RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(retX3, retYFar, Math.PI * 3 / 8), fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(retX3, retYNear, Math.PI * 3 / 8), 20, fastVel, fastAccel)
+                //RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(retX3, retYFar, Math.PI * 3 / 8), fastVel, fastAccel),
+                //RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(retX3, retYNear, Math.PI * 3 / 8), 20, fastVel, fastAccel)
         );
     }
 

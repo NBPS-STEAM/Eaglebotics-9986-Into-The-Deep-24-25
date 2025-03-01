@@ -29,6 +29,7 @@ public class VisionPortalSubsystem extends SubsystemBase {
     private ExposureControl exposureControl = null;
     private GainControl gainControl = null;
 
+    public double maxRange = Constants.LOCALIZATION_VISION_RANGE;
     private boolean exposureApplied = false;
 
     private GyroSource gyroSource = null;
@@ -78,6 +79,15 @@ public class VisionPortalSubsystem extends SubsystemBase {
     }
 
     /**
+     * Gets the distance of the nearest visible tag. Returns null if no visible tags.
+     */
+    public Double getTagRange() {
+        AprilTagDetection detection = pickNearestDetection(getDetections());
+        if (detection == null) return null;
+        return detection.ftcPose.range;
+    }
+
+    /**
      * Estimates the robot's position and orientation on the field using the nearest AprilTag.
      * Perhaps it could be better to average the estimations from all visible AprilTags, but this could hurt precision
      * because distant AprilTags are less precise than near ones. Also, I don't want to deal with averaging angles.
@@ -97,8 +107,9 @@ public class VisionPortalSubsystem extends SubsystemBase {
         return pickNearestPose(getFreshDetections());
     }
 
-    private Geo.Pose2D pickNearestPose(List<AprilTagDetection> detections) {
-        if (detections == null) return null;double bestDist = Double.MAX_VALUE;
+    private AprilTagDetection pickNearestDetection(List<AprilTagDetection> detections) {
+        if (detections == null) return null;
+        double bestDist = Double.MAX_VALUE;
         AprilTagDetection bestDet = null;
         for (AprilTagDetection detection : detections) {
             if (detection.metadata != null && detection.ftcPose.range < bestDist) {
@@ -106,8 +117,14 @@ public class VisionPortalSubsystem extends SubsystemBase {
                 bestDist = bestDet.ftcPose.range;
             }
         }
+        return bestDet;
+    }
+
+    private Geo.Pose2D pickNearestPose(List<AprilTagDetection> detections) {
+        if (detections == null) return null;
+        AprilTagDetection bestDet = pickNearestDetection(detections);
         if (bestDet == null) return null;
-        if (bestDist > Constants.LOCALIZATION_VISION_RANGE) return null;
+        if (bestDet.ftcPose.range > maxRange) return null;
         if (gyroSource == null) {
             return pose3Dto2D(bestDet.robotPose);
         } else {
@@ -208,18 +225,22 @@ public class VisionPortalSubsystem extends SubsystemBase {
         return exposureControl;
     }
 
+    /** Exposure time in microseconds, not milliseconds. */
     public void setExposure(long ms) {
-        getExposureControl().setExposure(ms, TimeUnit.MILLISECONDS);
+        getExposureControl().setExposure(ms, TimeUnit.MICROSECONDS);
     }
 
+    /** Exposure time in microseconds, not milliseconds. */
     public long getExposure() {
-        return getExposureControl().getExposure(TimeUnit.MILLISECONDS);
+        return getExposureControl().getExposure(TimeUnit.MICROSECONDS);
     }
+    /** Exposure time in microseconds, not milliseconds. */
     public long getMinExposure() {
-        return getExposureControl().getMinExposure(TimeUnit.MILLISECONDS);
+        return getExposureControl().getMinExposure(TimeUnit.MICROSECONDS);
     }
+    /** Exposure time in microseconds, not milliseconds. */
     public long getMaxExposure() {
-        return getExposureControl().getMaxExposure(TimeUnit.MILLISECONDS);
+        return getExposureControl().getMaxExposure(TimeUnit.MICROSECONDS);
     }
 
     public GainControl getGainControl() {

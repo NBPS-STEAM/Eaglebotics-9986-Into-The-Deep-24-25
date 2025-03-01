@@ -34,10 +34,17 @@ public class VisionLocalizationTest extends LinearOpMode {
         while (opModeIsActive()) {
             drive.drive(gamepad1);
 
-            telemetry.addData("x", drive.pose.position.x);
-            telemetry.addData("y", drive.pose.position.y);
+            telemetry.addData("pose x", drive.pose.position.x);
+            telemetry.addData("pose y", drive.pose.position.y);
             telemetry.addData("heading (deg)", Math.toDegrees(drive.pose.heading.toDouble()));
             telemetry.addData("tag visible?", vps.hasDetections() ? 10 : 0);
+            Double tagRange = vps.getTagRange();
+            if (tagRange == null) telemetry.addData("tag distance", "N/A");
+            else telemetry.addData("tag distance", tagRange);
+            telemetry.addLine();
+            evalError(xError, drive.pose.position.x);
+            evalError(yError, drive.pose.position.y);
+            evalError(headingError, drive.pose.heading.toDouble());
             telemetry.addLine();
             telemetry.addLine("Set alliance for localization:");
             telemetry.addLine("Press Left bumper - Blue Alliance");
@@ -63,5 +70,15 @@ public class VisionLocalizationTest extends LinearOpMode {
             Drawing.drawRobot(packet.fieldOverlay(), drive.pose);
             FtcDashboard.getInstance().sendTelemetryPacket(packet);
         }
+    }
+
+
+    private double[] xError = new double[103];
+    private double[] yError = new double[103];
+    private double[] headingError = new double[103];
+
+    private double evalError(double[] arr, double val) {
+        //double buf = arr[arr[100]]
+        return 0;
     }
 }

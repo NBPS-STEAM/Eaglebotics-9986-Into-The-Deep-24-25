@@ -31,18 +31,23 @@ package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.*;
-import com.acmerobotics.roadrunner.ftc.Actions;
+import com.arcrobotics.ftclib.command.Command;
 import com.arcrobotics.ftclib.command.CommandOpMode;
+import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.button.Trigger;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
+import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDriveTune1;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
+import org.firstinspires.ftc.teamcode.subsystems.VisionPortalSubsystem;
+import org.firstinspires.ftc.teamcode.teleop.MecautoTeleOpMode;
 
 import java.lang.Math;
 import java.util.Arrays;
@@ -78,11 +83,12 @@ import java.util.Arrays;
  */
 
 @Config
-@Autonomous(name="Baskets V1 Auto-OpMode (3 samples)", group="Autonomous OpMode")
-public class BasketsV1AutoOpMode extends CommandOpMode {
+@Autonomous(name="Baskets V3 Auto-OpMode (4 samples)", group="Autonomous OpMode")
+@Disabled
+public class BasketsV3AutoOpMode extends CommandOpMode {
 
     // Hardware Variables
-    private MecanumDriveTune1 drive;
+    private DriveSubsystemRRVision drive;
     private ArmSubsystem armSubsystem;
 
 
@@ -92,15 +98,14 @@ public class BasketsV1AutoOpMode extends CommandOpMode {
         // Reset zero state; autonomous opmodes should always zero the robot
         ResetZeroState.resetZeroState();
         // Initialize MecanumDrive at a particular pose
+        VisionPortalSubsystem visionPortalSubsystem = new VisionPortalSubsystem(hardwareMap, Constants.CAM_DO_STREAM);
         Pose2d initialPose = new Pose2d(0, 36, 0);
-        drive = new MecanumDriveTune1(hardwareMap, initialPose);
+        drive = new DriveSubsystemRRVision(hardwareMap, visionPortalSubsystem, Localizers.ENCODERS_WITH_VISION, initialPose);
+        drive.flashVision = false;
         // Initialize hardware
         armSubsystem = new ArmSubsystem(hardwareMap, Constants.ARM_ROTATION_POWER_AUTO, Constants.ARM_EXTENSION_POWER_AUTO, Constants.ARM_RAISE_POWER_AUTO);
 
         // Generate paths
-        // TODO: splines when going from basket to sample
-        // TODO: go straight from basket to sample (no approach strafe)?
-        // TODO: park in corner zone? maybe alternate opmode
         final Vector2d AUTO_BASKET_POS = new Vector2d(7.75, 63);
 
         final VelConstraint fastVelConstraint =
@@ -169,6 +174,13 @@ public class BasketsV1AutoOpMode extends CommandOpMode {
 
         // When the intake intakes a sample, stop the intake
         new Trigger(armSubsystem::shouldStopIntakeForSample).whenActive(armSubsystem::stopIntake);
+
+
+        // Wait until camera is ready (this will make it obvious if it doesn't activate)
+        MecautoTeleOpMode.sleepForVisionPortal(this, visionPortalSubsystem, telemetry);
+
+        // Alliance
+        drive.setIsBlueAlliance(DriverPrompter.queryAlliance(this), DriverPrompter.wasAllianceFromDriver());
     }
 
 
@@ -178,5 +190,15 @@ public class BasketsV1AutoOpMode extends CommandOpMode {
     public void reset() {
         ResetZeroState.markToNotZeroOnInit(drive.pose);
         super.reset();
+    }
+
+
+    private Command flashVision() {
+        return new InstantCommand();
+        /*return new SequentialCommandGroup(
+                new InstantCommand(() -> drive.blockVision = false),
+                new WaitUntilCommand(drive::didLastPoseEstUseVision),
+                new InstantCommand(() -> drive.blockVision = true)
+        );*/
     }
 }

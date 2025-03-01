@@ -199,7 +199,7 @@ public class MecanumTeleOpMode extends CommandOpMode {
         // These named set positions are defined in the ArmSubsystem class.
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.A); // Move arm to 'stow' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake"), Button.X); // Move arm to 'intake' set position
-        combineButtons(armGamepad, Button.B).and(armSubsystem.notSmartIntakeScheduledT()).whenActive(() -> armSubsystem.runSmartIntakeCommand()); // Intelligently cycle intake states
+        combineButtons(armGamepad, Button.B).and(armSubsystem.notSmartIntakeScheduled()).whenActive(() -> armSubsystem.runSmartIntakeCommand()); // Intelligently cycle intake states
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake-down"), Button.Y); // Move arm to 'intake-down' set position
 
         bindToStick(() -> armGamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER), true, () -> armSubsystem.applyNamedPosition("intake ground")); // Move arm to 'intake ground' set position
