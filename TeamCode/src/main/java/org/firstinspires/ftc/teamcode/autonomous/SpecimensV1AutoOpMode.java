@@ -37,10 +37,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import org.firstinspires.ftc.teamcode.Constants;
-import org.firstinspires.ftc.teamcode.helper.DriverPrompter;
-import org.firstinspires.ftc.teamcode.helper.IntakeState;
-import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
-import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
+import org.firstinspires.ftc.teamcode.helper.*;
 import org.firstinspires.ftc.teamcode.helper.localization.Localizers;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
@@ -88,8 +85,8 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
     // Variables
     private static final Pose2d INITIAL_POSE = new Pose2d(7, -63.5, Math.PI / 2);
     private static final double INTAKE_X = 48;
-    private static final double INTAKE_Y = -50;
-    private static final double INTAKE_HEADING = Math.toRadians(4);
+    private static final double INTAKE_Y = -59;
+    private static final double INTAKE_HEADING = Math.toRadians(0);
     private static final double APPROACH_Y = -48;
     private static final double SCORE_Y = -35;
 
@@ -108,7 +105,8 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
         // Do which routine?
         // Path is NOT generated here.
         // This is asked all the way up here because drive subsystem params depend on this.
-        boolean useV2 = DriverPrompter.queryBoolean(this, false, "Do the full 4-specimen routine?", "Do full routine");
+        //boolean useV2 = DriverPrompter.queryBoolean(this, false, "Do the full 4-specimen routine?", "Do full routine");
+        boolean useV2 = false;
         Supplier<Command> pathGenerator;
         DriveSubsystemRRVision.Params params = new DriveSubsystemRRVision.Params();
         if (useV2) {
@@ -118,6 +116,8 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
             params.maxProfileAccel = 20.0;
             params.maxAngVel = Math.PI * 1.5;
             params.maxAngAccel = Math.PI * 1.5;
+
+            params.posTolerance = 4;
         } else {
             pathGenerator = this::getSpecimensV1;
         }
@@ -176,17 +176,17 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
     }
 
     private Command getSpecimensV1() {
-        return new SequentialCommandGroup(
-                composeScoreCommand(8),
+        return new SequentialCommandGroupFix(
+                composeScoreCommand(0),
                 composeIntakeCommand(),
-                composeScoreCommand(8), //TODO: MIGHT NOT WORK (CHANGE TO 0 IF NOT)
+                composeScoreCommand(4), //TODO: MIGHT NOT WORK (CHANGE TO 0 IF NOT)
                 composeRetrievalCommand()
         );
     }
 
     private Command getSpecimensV2() {
-        return new SequentialCommandGroup(
-                composeScoreCommand(8),
+        return new SequentialCommandGroupFix(
+                composeScoreCommand(6),
                 composeRetrievalCommand(),
                 RoadRunnerCommand.lazyStrafeTo(drive, new Vector2d(-9, INTAKE_Y+4), 6),
                 composeIntakeCommand(),
@@ -202,35 +202,63 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
     }
 
     private Command composeIntakeCommand() {
-        return new SequentialCommandGroup(
+        return new RoadRunnerCommand(drive.actionBuilder(drive.pose)
+                .afterTime(0.0, () -> armSubsystem.applyNamedPosition("intake ground"))
+                .strafeToLinearHeading(Constants.POS_SPECIMEN_APPROACH.position, Constants.POS_SPECIMEN_APPROACH.heading)
+                .strafeToLinearHeading(Constants.POS_SPECIMEN_INTAKE.position, Constants.POS_SPECIMEN_INTAKE.heading)
+                .build()
+        );
+
+        /*return new SequentialCommandGroupFix(
+                new RoadRunnerCommand(drive.actionBuilder(drive.pose)
+                        .strafeToLinearHeading(Constants.POS_SPECIMEN_APPROACH.position, Constants.POS_SPECIMEN_APPROACH.heading)
+                        .build()),
+                new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground")),
+                new ParallelRaceGroup(
+                        new WaitUntilCommand(armSubsystem::hasSampleInIntake),
+                        new RoadRunnerCommand(drive.actionBuilder(drive.pose)
+                                .strafeToLinearHeading(Constants.POS_SPECIMEN_INTAKE.position, Constants.POS_SPECIMEN_INTAKE.heading)
+                                .build())
+                )
+        );*/
+
+        /*final VelConstraint slowVel =
+                new MinVelConstraint(Arrays.asList(
+                        drive.kinematics.new WheelVelConstraint(30),
+                        new AngularVelConstraint(Math.PI)
+                ));
+        final AccelConstraint slowAccel =
+                new ProfileAccelConstraint(-20, 20);
+
+        return new SequentialCommandGroupFix(
                 new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose).turnTo(INTAKE_HEADING).build()),
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("intake ground")),
                 new ParallelRaceGroup(
-                        RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(INTAKE_X, INTAKE_Y, INTAKE_HEADING), 5),
+                        RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(INTAKE_X, INTAKE_Y, INTAKE_HEADING), 5, slowVel, slowAccel),
                         new WaitUntilCommand(armSubsystem::hasSampleInIntake)
                 )
-        );
+        );*/
     }
 
     private Command composeScoreCommand(double alignX) {
-        return new SequentialCommandGroup(
+        return new SequentialCommandGroupFix(
                 new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("specimen low")),
-                RoadRunnerCommand.strafeToXLinearHeading(drive, alignX, Math.PI / 2),
+                RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(alignX, -50, Math.PI / 2)),
                 new ParallelDeadlineGroup(
                         RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(alignX, SCORE_Y, Math.PI / 2), 10),
-                        new SequentialCommandGroup(
+                        new SequentialCommandGroupFix(
                                 new WaitUntilCommand(() -> drive.pose.position.y > APPROACH_Y),
                                 new InstantCommand(() -> armSubsystem.applyNamedPosition("specimen high"))
                         )
                 ),
                 new InstantCommand(() -> armSubsystem.applyExtensionPosition(0)),
-                RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(-3, INTAKE_Y+4, Math.PI / 2))
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, new Pose2d(-3, INTAKE_Y, Math.PI / 2), 12)
         );
     }
 
     private Command composeParkCommand() {
-        return new SequentialCommandGroup(
+        return new SequentialCommandGroupFix(
                 new InstantCommand(() -> armSubsystem.applyIntakeState(IntakeState.STOPPED)),
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("stow")),
                 new RoadRunnerCommand(() -> drive.actionBuilder(drive.pose).strafeTo(new Vector2d(INTAKE_X+12, INTAKE_Y-6)).build())
@@ -239,11 +267,11 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
 
     private Command composeRetrievalCommand() {
         // Define keypoint positions
-        final double retYFar = -16;
-        final double retYNear = -60;
-        final double retX1 = 38;
-        final double retX2 = 47;
-        final double retX3 = 56;
+        final double retYFar = -18;
+        final double retYNear = -65;
+        final double retX1 = 36;
+        final double retX2 = 49;
+        final double retX3 = 63;
         //final double retX4 = 58;
 
         final VelConstraint fastVel =
@@ -255,17 +283,17 @@ public class SpecimensV1AutoOpMode extends CommandOpMode {
                 new ProfileAccelConstraint(-30, 30);
 
         // Compose sample retrieval command
-        return new SequentialCommandGroup(
+        return new SequentialCommandGroupFix(
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("compact")),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, -48), 2, fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, retYFar+20), 20, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, -48), 3, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX1, retYFar+30), 30, fastVel, fastAccel),
 
                 RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar), 5, fastVel, fastAccel),
                 RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYNear), 20, fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar+20), 20, fastVel, fastAccel),
+                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX2, retYFar+30), 30, fastVel, fastAccel),
 
                 RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar), 5, fastVel, fastAccel),
-                RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYNear), 20, fastVel, fastAccel)
+                RoadRunnerCommand.strafeToLinearHeading(drive, forwardPose(retX3, retYNear), fastVel, fastAccel)
                 //RoadRunnerCommand.lazyStrafeToLinearHeading(drive, forwardPose(retX3, retYFar+20), 20, fastVel, fastAccel),
 
                 //RoadRunnerCommand.strafeToLinearHeading(drive, new Pose2d(retX3, retYFar, Math.PI * 3 / 8), fastVel, fastAccel),

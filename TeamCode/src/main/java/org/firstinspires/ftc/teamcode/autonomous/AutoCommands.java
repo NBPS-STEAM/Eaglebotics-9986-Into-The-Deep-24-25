@@ -4,6 +4,7 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.*;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.RoadRunnerCommand;
+import org.firstinspires.ftc.teamcode.helper.SequentialCommandGroupFix;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystemRRVision;
 
@@ -22,7 +23,7 @@ public final class AutoCommands {
 
 
     public Command getIntakeSpecimenCommand() {
-        CommandBase command = new SequentialCommandGroup(
+        CommandBase command = new SequentialCommandGroupFix(
                 new RoadRunnerCommand(drive.actionBuilder(drive.pose)
                         .strafeToLinearHeading(Constants.POS_SPECIMEN_APPROACH.position, Constants.POS_SPECIMEN_APPROACH.heading)
                         .build()),
@@ -40,7 +41,7 @@ public final class AutoCommands {
 
 
     public Command getScoreSpecimenCommand() {
-        CommandBase command = new SequentialCommandGroup(
+        CommandBase command = new SequentialCommandGroupFix(
                 //TODO
         );
         command.addRequirements(drive);
@@ -55,7 +56,7 @@ public final class AutoCommands {
      * <p>Uses: driveSubsystem, armSubsystem</p>
      */
     public Command getScoreSampleCommand() {
-        CommandBase command = new SequentialCommandGroup(
+        CommandBase command = new SequentialCommandGroupFix(
                 new InstantCommand(() -> armSubsystem.lockSetPosition(false)),
                 new InstantCommand(() -> armSubsystem.applyNamedPosition("basket high", true, true)),
                 getDriveToBasketPath(),

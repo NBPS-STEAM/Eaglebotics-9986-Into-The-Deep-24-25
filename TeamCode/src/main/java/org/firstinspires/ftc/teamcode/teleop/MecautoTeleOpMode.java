@@ -275,7 +275,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
 
         // Apply Set Positions
         // These named set positions are defined in the ArmSubsystem class.
-        combineButtons(armGamepad, Button.A).whenActive(andThenRumble(armSubsystem.compactStowOrZeroCommand(), armGamepad)); // Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
+        combineButtons(armGamepad, Button.A).whileActiveOnce(armSubsystem.compactStowOrZeroCommand()); // Move arm to 'compact' set position (zero rotation then rumble if pressed a second time)
         combineButtons(armGamepad, Button.X).whenActive(armSubsystem.moveToSubmersibleIntakeCommand()); // Move arm to 'intake vertical' set position (outtakes if has sample)
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("intake ground"), Button.Y); // Move arm to 'intake ground' set position
         bindToButtons(armGamepad, () -> armSubsystem.applyNamedPosition("stow"), Button.BACK); // Move arm to 'stow' set position
@@ -457,7 +457,7 @@ public class MecautoTeleOpMode extends CommandOpMode {
     }
 
     private void updateGamepadColors() {
-        double otherColor = isSpecimenMode ? 0.5 : 0.0;
+        double otherColor = isSpecimenMode ? 0.25 : 0.0;
         if (driveSubsystem.getIsBlueAlliance()) {
             gamepad1.setLedColor(otherColor, otherColor, 1.0, 200000);
             gamepad2.setLedColor(otherColor, otherColor, 1.0, 200000);

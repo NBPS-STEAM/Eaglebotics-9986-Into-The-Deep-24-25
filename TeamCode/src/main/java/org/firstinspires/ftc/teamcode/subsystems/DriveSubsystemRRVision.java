@@ -57,12 +57,19 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
 
         // path profile parameters (in inches)
         public double maxWheelVel = Constants.AUTO_DRIVE_VEL_MAX;
-        public double minProfileAccel = -Constants.AUTO_DRIVE_ACCEL_MAX;
+        public double minProfileAccel = Constants.AUTO_DRIVE_DECEL_MAX;
         public Double maxProfileAccel = Constants.AUTO_DRIVE_ACCEL_MAX;
 
         // turn profile parameters (in radians)
         public double maxAngVel = Constants.AUTO_DRIVE_ANG_VEL_MAX; // shared with path
         public double maxAngAccel = Constants.AUTO_DRIVE_ANG_ACCEL_MAX;
+
+        // tolerances at end of path
+        public double posTolerance = Constants.AUTO_DRIVE_POS_TOLERANCE; // The positional tolerance of autonomous driving using DriveSubsystemRRVision
+        public double velTolerance = Constants.AUTO_DRIVE_VEL_TOLERANCE; // The velocity tolerance of autonomous driving using DriveSubsystemRRVision
+        public double angTolerance = Constants.AUTO_DRIVE_ANG_TOLERANCE; // The angular tolerance of autonomous driving using DriveSubsystemRRVision
+        public double angVelTolerance = Constants.AUTO_DRIVE_ANGVEL_TOLERANCE; // The angular velocity tolerance of autonomous driving using DriveSubsystemRRVision
+        public double toleranceTimeout = Constants.AUTO_DRIVE_TOLERANCE_TIMEOUT; // The maximum time that can be spent correcting the end of a path in autonomous driving using DriveSubsystemRRVision
 
         // path controller gains
         public double axialGain = 3.0;
@@ -327,11 +334,11 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
             Pose2d error = txWorldTarget.value().minusExp(pose);
 
             if ((t >= timeTrajectory.duration
-                    && error.position.norm() < Constants.AUTO_DRIVE_POS_TOLERANCE
-                    && robotVelRobot.linearVel.norm() < Constants.AUTO_DRIVE_VEL_TOLERANCE
-                    && error.heading.toDouble() < Constants.AUTO_DRIVE_ANG_TOLERANCE
-                    && robotVelRobot.angVel < Constants.AUTO_DRIVE_ANGVEL_TOLERANCE)
-                    || t >= timeTrajectory.duration + Constants.AUTO_DRIVE_TOLERANCE_TIMEOUT) {
+                    && error.position.norm() < PARAMS.posTolerance
+                    && robotVelRobot.linearVel.norm() < PARAMS.velTolerance
+                    && error.heading.toDouble() < PARAMS.angTolerance
+                    && robotVelRobot.angVel < PARAMS.angVelTolerance)
+                    || t >= timeTrajectory.duration + PARAMS.toleranceTimeout) {
                 leftFront.setPower(0);
                 leftBack.setPower(0);
                 rightBack.setPower(0);
@@ -431,9 +438,9 @@ public class DriveSubsystemRRVision extends SubsystemBase implements VisionPorta
             Pose2d error = txWorldTarget.value().minusExp(pose);
 
             if ((t >= turn.duration
-                    && error.heading.toDouble() < Constants.AUTO_DRIVE_ANG_TOLERANCE
-                    && robotVelRobot.angVel < Constants.AUTO_DRIVE_ANGVEL_TOLERANCE)
-                    || t >= turn.duration + Constants.AUTO_DRIVE_TOLERANCE_TIMEOUT) {
+                    && error.heading.toDouble() < PARAMS.angTolerance
+                    && robotVelRobot.angVel < PARAMS.angVelTolerance)
+                    || t >= turn.duration + PARAMS.toleranceTimeout) {
                 leftFront.setPower(0);
                 leftBack.setPower(0);
                 rightBack.setPower(0);

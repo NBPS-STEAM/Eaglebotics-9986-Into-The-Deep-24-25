@@ -71,7 +71,7 @@ public class Constants {
             IMU_HUB_USB_DIRECTION = RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD;
 
     // Component configuration
-    public static final double    WRIST_POSITION_UP          = 0.234;  // The servo position of the wrist when it's pointing straight forward
+    public static final double    WRIST_POSITION_UP          = 0.334;  // The servo position of the wrist when it's pointing straight forward
 
     public static final int       EXTENSION_TICKS_1_INCH     = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm extension to extend 1 inch
     public static final int       RAISE_TICKS_1_INCH         = 32;   // (PLACEHOLDER) The number of encoder ticks for the arm raise to extend 1 inch
@@ -123,6 +123,7 @@ public class Constants {
 
     public static       double    AUTO_DRIVE_VEL_MAX          = 40.0; // The default maximum velocity of autonomous driving using DriveSubsystemRRVision
     public static       double    AUTO_DRIVE_ACCEL_MAX        = 20.0; // The default maximum acceleration of autonomous driving using DriveSubsystemRRVision
+    public static       double    AUTO_DRIVE_DECEL_MAX        = -20.0; // The default maximum deceleration of autonomous driving using DriveSubsystemRRVision
     public static       double    AUTO_DRIVE_ANG_VEL_MAX      = Math.PI; // The default maximum angular velocity of autonomous driving using DriveSubsystemRRVision
     public static       double    AUTO_DRIVE_ANG_ACCEL_MAX    = Math.PI; // The default maximum angular acceleration of autonomous driving using DriveSubsystemRRVision
 
@@ -132,7 +133,7 @@ public class Constants {
     public static       double    AUTO_DRIVE_ANGVEL_TOLERANCE = Math.toRadians(4); // The angular velocity tolerance of autonomous driving using DriveSubsystemRRVision
     public static       double    AUTO_DRIVE_TOLERANCE_TIMEOUT = 2.0; // The maximum time that can be spent correcting the end of a path in autonomous driving using DriveSubsystemRRVision
 
-    public static final double    LOCALIZATION_VISION_RANGE         = 72.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
+    public static final double    LOCALIZATION_VISION_RANGE         = 60.0; // (inches) AprilTags beyond this distance will be ignored in vision localization.
     //public static       double    LOCALIZATION_LINEAR_THRESHOLD     = 50.0; // The maximum speed at which the camera can be used to localize
     //public static       double    LOCALIZATION_ANGULAR_THRESHOLD    = Math.PI * 0.6; // The maximum angular speed at which the camera can be used to localize
 
@@ -189,7 +190,7 @@ public class Constants {
     public static       int                CAM_SIZE_X      = 1280; // Width (pixels) of the camera's resolution (must be a supported resolution)
     public static       int                CAM_SIZE_Y      = 720;  // Height (pixels) of the camera's resolution (must be a supported resolution)
     public static       float              CAM_DECIMATION  = 3; // To be honest, I'm not sure what this does. More info in VisionPortalSubsystem.initAprilTag()
-    public static       long               CAM_EXPOSURE_MS = 800; // (MICROSECONDS) The preferred exposure time of the camera
+    public static       long               CAM_EXPOSURE_MS = 600; // (MICROSECONDS) The preferred exposure time of the camera
 
     // Camera tuning
     // For new global-shutter camera with black 3D-printed case:
@@ -225,6 +226,6 @@ public class Constants {
     public static final Pose2d POS_INTAKE_APPROACH      = new Pose2d(-40, 0, Math.toRadians(-90));
 
     public static final Pose2d POS_SPECIMEN_APPROACH    = new Pose2d(35, -42.8, Math.toRadians(-43.5));
-    public static final Pose2d POS_SPECIMEN_INTAKE      = new Pose2d(44.3, -52.62, Math.toRadians(-43.5));
+    public static final Pose2d POS_SPECIMEN_INTAKE      = new Pose2d(44.3+2, -52.62-2, Math.toRadians(-43.5));
 
 }

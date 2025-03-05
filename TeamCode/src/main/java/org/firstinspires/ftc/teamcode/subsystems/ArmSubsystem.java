@@ -13,6 +13,7 @@ import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.helper.ResetZeroState;
 import org.firstinspires.ftc.teamcode.helper.ArmPosition;
 import org.firstinspires.ftc.teamcode.helper.IntakeState;
+import org.firstinspires.ftc.teamcode.helper.SequentialCommandGroupFix;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -70,11 +71,11 @@ public class ArmSubsystem extends SubsystemBase {
         addNamedPosition("intake-down", new ArmPosition(0.3, 67, 0, 1.39, IntakeState.INTAKE));
         addNamedPosition("intake vertical", new ArmPosition(0.425, 65, 0, 1.766, IntakeState.INTAKE));
         addNamedPosition("intake vertical-down", new ArmPosition(0.355, 65, 0, 1.766, IntakeState.INTAKE));
-        addNamedPosition("intake ground", new ArmPosition(0.17, 18, 0, 1.317, IntakeState.INTAKE));
-        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.7));
+        addNamedPosition("intake ground", new ArmPosition(0.17, 18, 0, 1.3, IntakeState.INTAKE));
+        addNamedPosition("basket high", new ArmPosition(0.9, 68, 160, 1.8));
         addNamedPosition("basket low", new ArmPosition(0.7, 2, 160, 1.766));
-        addNamedPosition("specimen high", new ArmPosition(0.67, 67, 0, 1.6));
-        addNamedPosition("specimen low", new ArmPosition(0.56, 67, 0, 1.5));
+        addNamedPosition("specimen high", new ArmPosition(0.67, 67, 0, 1.4));
+        addNamedPosition("specimen low", new ArmPosition(0.56, 67, 0, 1.4));
 
         addNamedPosition("hang stage 1", new ArmPosition(1.4, 0, 160, 0.95, IntakeState.STOPPED));
         addNamedPosition("hang stage 2", new ArmPosition(1.7, 0, 0, 0.95, IntakeState.STOPPED));
@@ -84,6 +85,12 @@ public class ArmSubsystem extends SubsystemBase {
         addNamedPosition("intake ground-high up", new ArmPosition(0.5, 67, 95, 1.294, IntakeState.STOPPED));
         addNamedPosition("intake ground-high down", new ArmPosition(0.17, 67, 95, 1.294, IntakeState.INTAKE)
                 .after(() -> applyRotationPositionUnscaled(-50)));
+
+        addNamedPosition("intake ground-high alt up", new ArmPosition(0.5, 67, 160, 1.766, IntakeState.STOPPED));
+        addNamedPosition("intake ground-high alt mid", new ArmPosition(0.2255, 67, 160, 1.766, IntakeState.INTAKE));
+        addNamedPosition("intake ground-high alt up INNER", new ArmPosition(0.5, 0, 160, 1.766, IntakeState.STOPPED));
+        addNamedPosition("intake ground-high alt mid INNER", new ArmPosition(0.2255, 0, 160, 1.766, IntakeState.INTAKE));
+        addNamedPosition("intake ground-high alt down", new ArmPosition(0.185, 67, 160, 1.766, IntakeState.INTAKE));
 
         // ???
         addNamedPosition("pizza", new ArmPosition(Double.NaN, 69, 420, 1.80, IntakeState.OUTTAKE));
@@ -330,7 +337,7 @@ public class ArmSubsystem extends SubsystemBase {
      * <p>ONLY run when arm is at the PHYSICAL BOTTOM position (which should also be the zero position)!</p>
      */
     public Command automaticZeroRotationCommand() {
-        return new SequentialCommandGroup(
+        return new SequentialCommandGroupFix(
                 new InstantCommand(() -> setRotationPower(-0.3)),
                 new WaitCommand(250),
                 new InstantCommand(() -> setRotationPower(0)),
@@ -341,7 +348,7 @@ public class ArmSubsystem extends SubsystemBase {
 
     public Command moveToSubmersibleIntakeCommand() {
         CommandBase command = new ConditionalCommand(
-                new SequentialCommandGroup(
+                new SequentialCommandGroupFix(
                         new InstantCommand(() -> applyNamedPosition("intake vertical", false)),
                         new InstantCommand(() -> applyIntakeState(IntakeState.OUTTAKE)),
                         new WaitCommand(400),
@@ -354,7 +361,7 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public Command submersibleIntakeDownCommand() {
-        CommandBase command = new SequentialCommandGroup(
+        CommandBase command = new SequentialCommandGroupFix(
                 new InstantCommand(() -> applyNamedPosition("intake vertical-down", false)),
                 new WaitCommand(500),
                 new InstantCommand(() -> applyNamedPosition("intake vertical", false))
@@ -367,8 +374,7 @@ public class ArmSubsystem extends SubsystemBase {
         CommandBase command = new ConditionalCommand(
                 new InstantCommand(() -> applyNamedPosition("stow", false)),
                 new ConditionalCommand(
-                        automaticZeroRotationCommand().andThen(
-                                new InstantCommand(() -> applyNamedPosition("compact", false))),
+                        automaticZeroRotationCommand(),
                         new InstantCommand(() -> applyNamedPosition("compact", false)),
                         () -> wasLastSetPosition("compact")
                 ),
@@ -406,15 +412,15 @@ public class ArmSubsystem extends SubsystemBase {
         final ArmSubsystem subsystem = this;
         CommandBase command = new SelectCommand(
                 new HashMap<Object, Command>() {{
-                    put(IntakeState.STOPPED, new SequentialCommandGroup(
+                    put(IntakeState.STOPPED, new SequentialCommandGroupFix(
                             new InstantCommand(subsystem::startIntake)
                     ));
-                    put(IntakeState.INTAKE, new SequentialCommandGroup(
+                    put(IntakeState.INTAKE, new SequentialCommandGroupFix(
                             new InstantCommand(subsystem::stopIntake),
                             new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
                             new WaitCommand(500)
                     ));
-                    put(IntakeState.OUTTAKE, new SequentialCommandGroup(
+                    put(IntakeState.OUTTAKE, new SequentialCommandGroupFix(
                             new InstantCommand(subsystem::stopIntake),
                             new InstantCommand(() -> subsystem.applyNamedPosition(getSmartIntakeStowPosition(), false)),
                             new WaitCommand(500)
